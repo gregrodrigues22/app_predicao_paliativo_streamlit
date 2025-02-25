@@ -322,7 +322,7 @@ if submit_button:
         #ax.set_ylabel('Probabilidade')
         #ax.set_title('Probabilidades das Classes')
         #st.pyplot(fig)
-        if predictions_df['predict'][0] == 1::
+        if predictions_df['predict'][0] == 1:
             st.success(f"A Classe 1 foi predita com probabilidade maior que o limiar: ({predictions_df['p1'][0]:.2f})!")
         else:
             st.warning(f"A Classe 0 foi predita com probabilidade maior que o limiar: ({predictions_df['p0'][0]:.2f})!")
