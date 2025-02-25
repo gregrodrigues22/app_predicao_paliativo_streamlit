@@ -323,9 +323,9 @@ if submit_button:
         #ax.set_title('Probabilidades das Classes')
         #st.pyplot(fig)
         if predictions_df['predict'][0] == 1:
-            st.success(f"A Classe 1 - Baixa Sobrevida - foi predita com probabilidade maior que o limiar: ({predictions_df['p1'][0]:.2f})!")
+            st.success(f"A Classe 1 - Baixa Sobrevida - foi predita com probabilidade maior que o limiar: ({predictions_df['p1'][0]:.2f})")
         else:
-            st.warning(f"A Classe 0 - Longa Sobrevida - foi predita com probabilidade maior que o limiar: ({predictions_df['p0'][0]:.2f})!")
+            st.warning(f"A Classe 0 - Longa Sobrevida - foi predita com probabilidade maior que o limiar: ({predictions_df['p0'][0]:.2f})")
     except Exception as e:
         st.write("❌ Erro ao realizar predição...", str(e))
 
