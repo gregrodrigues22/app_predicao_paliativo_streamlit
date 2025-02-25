@@ -140,7 +140,7 @@ if submit_button:
     try:
         encoding_maps = joblib.load("encoding_maps.joblib")
         encoding_maps_cid = encoding_maps["ICD"]
-        st.write("✅ Preparando input do Dado 'CID' para predição...")
+        #st.write("✅ Preparando input do Dado 'CID' para predição...")
         df_input["icd_processed"] = df_input["icd"].str.split(" - ").str[0].str.lower()
         df_input["icd_encoded"] = df_input["icd_processed"].map(encoding_maps_cid).fillna(0.34162670016104163)
         #st.write(df_input["icd_encoded"])
@@ -150,7 +150,7 @@ if submit_button:
     #Encoding Status_Original
     try:
         encoding_maps_status = encoding_maps["Status_Original"]
-        st.write("✅ Preparando input do Dado 'Status' para predição...")
+        #st.write("✅ Preparando input do Dado 'Status' para predição...")
         df_input["status_original_encoded"] = df_input["status_original"].map(encoding_maps_status).fillna(0.31209494163715695)
         #st.write(df_input["status_original_encoded"])
     except:
@@ -159,7 +159,7 @@ if submit_button:
     #Encoding Status_Ordinal
     try:
         priority_encoding = {"Verde": 1,"Amarelo": 2,"Vermelho": 3}
-        st.write("✅ Preparando input do Dado 'Prioridade' para predição...")
+        #st.write("✅ Preparando input do Dado 'Prioridade' para predição...")
         df_input["status_priority_encoded"] = df_input["status_priority"].map(priority_encoding).fillna(1)
         #st.write(df_input["status_priority_encoded"])
     except:
@@ -168,7 +168,7 @@ if submit_button:
     #Encoding Sexo
     try:
         gender_encoding = {"Feminino": 1,"Masculino": 0}
-        st.write("✅ Preparando input do Dado 'Sexo' para predição...")
+        #st.write("✅ Preparando input do Dado 'Sexo' para predição...")
         df_input["gender_encoded"] = df_input["gender"].map(gender_encoding).fillna(1)
         #st.write(df_input["gender_encoded"])
     except:
@@ -177,7 +177,7 @@ if submit_button:
     #Encoding TDR
     try:
         tdr_encoding = {"Não": 0,"Sim": 1}
-        st.write("✅ Preparando input do Dado 'Reinternação' para predição...")
+        #st.write("✅ Preparando input do Dado 'Reinternação' para predição...")
         df_input["tdr_encoded"] = df_input["tdr"].map(tdr_encoding).fillna(0)
         #st.write(df_input["tdr_encoded"])
     except:
@@ -186,7 +186,7 @@ if submit_button:
     #Encoding Tendência
     try:
         tendency_encoding = {"Estável": 1,"Melhorando": 2, "Instável": 3}
-        st.write("✅ Preparando input do Dado 'Tendência' para predição...")
+        #st.write("✅ Preparando input do Dado 'Tendência' para predição...")
         df_input["tendency_encoded"] = df_input["tendency"].map(tendency_encoding).fillna(1)
         #st.write(df_input["tendency_encoded"])
     except:
@@ -195,7 +195,7 @@ if submit_button:
     #Encoding missing_ecog
     try:
         missing_ecog_encoding = {"False": 0,"True": 1}
-        st.write("✅ Preparando input do Dado 'Ecog' para predição...")
+        #st.write("✅ Preparando input do Dado 'Ecog' para predição...")
         df_input["missing_ecog_encoded"] = df_input["missing_ecog"].astype(str).map(missing_ecog_encoding).fillna(1)
         #st.write(df_input["missing_ecog_encoded"])
     except:
@@ -204,9 +204,9 @@ if submit_button:
     #Encoding missing_bmi
     try:
         missing_bmi_encoding = {"False": 0,"True": 1}
-        st.write("✅ Preparando input do Dado 'IMC' para predição...")
+        #st.write("✅ Preparando input do Dado 'IMC' para predição...")
         df_input["missing_bmi_encoded"] = df_input["missing_bmi"].astype(str).map(missing_bmi_encoding).fillna(1)
-        #st.write(df_input["missing_bmi_encoded"])
+        #    st.write(df_input["missing_bmi_encoded"])
     except:
         st.write("❌ Erro ao preparar Dado 'IMC' para predição...")
 
@@ -214,7 +214,7 @@ if submit_button:
     try:
         df_input["ti_segundos"] = df_input["ti"] * 86400
         df_input["saot_fracao"] = df_input["saot"] /100
-        st.write("✅ Preparando input do Dado 'Tempo entre Última Consulta e PS' para predição...")
+        #st.write("✅ Preparando input do Dado 'Tempo entre Última Consulta e PS' para predição...")
     except:
         st.write("❌ Erro ao preparar Dado 'Tempo entre Última Consulta e PS' para predição...")
 
@@ -222,7 +222,7 @@ if submit_button:
     try:
         scaler = joblib.load("scaler.joblib")
         print(type(scaler))
-        st.write("✅ Preparando normalização dos dados")
+        #st.write("✅ Preparando normalização dos dados...")
     except Exception as e:
         print("❌ Erro ao preparar normalização dados...", str(e))
 
@@ -254,7 +254,7 @@ if submit_button:
         "status_original_encoded": "Status_Original"
         }
         df_input = df_input.rename(columns=column_scale_mapping)
-        st.write("✅ Preparando nomenclatura dos dados")
+        #st.write("✅ Preparando nomenclatura dos dados...")
     except Exception as e:
         print("❌ Erro ao preparar nomenclatura das variáveis dados...", str(e))
 
@@ -275,7 +275,7 @@ if submit_button:
         #st.write(df_input_scaled.dtypes)
         df_input_scaled[expected_columns] = scaler.transform(df_input_scaled[expected_columns])
         #st.write(df_input_scaled)
-        st.write("✅ Realizando normalização dos dados")
+        #st.write("✅ Realizando normalização dos dados...")
     except Exception as e:
         st.write("❌ Erro ao normalizar dados...", str(e))
 
@@ -314,7 +314,7 @@ if submit_button:
         predictions = model.predict(h2o_df)
         predictions_df = predictions.as_data_frame()
         st.write(predictions_df)
-        st.write("✅ Predição realizada com sucesso!")
+        #st.write("✅ Predição realizada com sucesso!")
     except Exception as e:
         st.write("❌ Erro ao realizar predição...", str(e))
 
