@@ -274,7 +274,7 @@ if submit_button:
         #print("No Scaler mas não no DataFrame:", set(expected_columns) - set(df_input_scaled.columns))
         #st.write(df_input_scaled.dtypes)
         df_input_scaled[expected_columns] = scaler.transform(df_input_scaled[expected_columns])
-        st.write(df_input_scaled)
+        #st.write(df_input_scaled)
         st.write("✅ Realizando normalização dos dados")
     except Exception as e:
         st.write("❌ Erro ao normalizar dados...", str(e))
