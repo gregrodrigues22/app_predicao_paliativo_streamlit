@@ -3,6 +3,7 @@ import pandas as pd
 import os
 import joblib
 import h2o
+import gdown
 from h2o.estimators import H2OGenericEstimator
 
 # Título do formulário
@@ -276,9 +277,36 @@ if submit_button:
         #st.write(df_input_scaled)
         st.write("✅ Realizando normalização dos dados")
     except Exception as e:
-        print("❌ Erro ao normalizar dados...", str(e))
+        st.write("❌ Erro ao normalizar dados...", str(e))
 
-    #Aplicando predição
+    #Baixando modelo
+    try:
+
+        # URL do modelo no Google Drive
+        file_id = "1GtQL2f_D4g9a_fMhwDG5hmgAFmaouYHm"  # Substitua pelo ID do seu arquivo
+        url = f"https://drive.google.com/uc?id={file_id}"
+
+        # Nome do arquivo para salvar localmente
+        model_filename = "h2o_model.zip"
+
+        # Baixar o modelo
+        @st.cache_resource
+        def download_model():
+            gdown.download(url, model_filename, quiet=False)
+            return model_filename
+        
+        # Baixar o modelo
+        download_model()
+
+        # Iniciar o H2O e carregar o modelo
+        h2o.init()
+
+        # Carregar o modelo H2O
+        model = h2o.load_model(model_filename)
+        
+        st.write("Modelo carregado com sucesso!")
+    except Exception as e:
+        st.write("❌ Erro ao carregar modelo...", str(e))
 
     #Mostrando predição
 
