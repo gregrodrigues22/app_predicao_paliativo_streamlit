@@ -283,11 +283,11 @@ if submit_button:
     try:
 
         # URL do modelo no Google Drive
-        file_id = "1GtQL2f_D4g9a_fMhwDG5hmgAFmaouYHm"  # Substitua pelo ID do seu arquivo
+        file_id = "1IEGIuHt1l8xwR_Jl5J_fuKf0h5Fkdwx2"  # Substitua pelo ID do seu arquivo
         url = f"https://drive.google.com/uc?id={file_id}"
 
         # Nome do arquivo para salvar localmente
-        model_filename = "h2o_model.zip"
+        model_filename = "modelo_em_mojo.zip"
 
         # Baixar o modelo
         @st.cache_resource
@@ -302,12 +302,17 @@ if submit_button:
         h2o.init()
 
         # Carregar o modelo H2O
-        model = h2o.load_model(model_filename)
+        model = h2o.import_mojo(model_filename)
         
         st.write("Modelo carregado com sucesso!")
     except Exception as e:
         st.write("❌ Erro ao carregar modelo...", str(e))
 
     #Mostrando predição
+    try:
+        h2o_df = h2o.H2OFrame(df_input_scaled)
+        predictions = model.predict(h2o_df)
+        predictions_df = predictions.as_data_frame()
+        st.write(predictions_df)
 
 
