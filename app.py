@@ -5,6 +5,7 @@ import joblib
 import h2o
 import gdown
 from h2o.estimators import H2OGenericEstimator
+import matplotlib.pyplot as plt
 
 # Título do formulário
 st.title("Predição de Sobrevida")
@@ -315,6 +316,17 @@ if submit_button:
         predictions_df = predictions.as_data_frame()
         st.write(predictions_df)
         #st.write("✅ Predição realizada com sucesso!")
+        
+        st.markdown("### Resultado da Predição:")
+        fig, ax = plt.subplots()
+        ax.bar(['Classe 0', 'Classe 1'], [predictions_df['p0'][0], predictions_df['p1'][0]], color=['red', 'green'])
+        ax.set_ylabel('Probabilidade')
+        ax.set_title('Probabilidades das Classes')
+        st.pyplot(fig)
+        if predictions_df['p1'][0] > predictions_df['p0'][0]:
+            st.success(f"A Classe 1 foi predita com probabilidade maior que o limiar de 54%: ({predictions_df['p1'][0]:.2f})!")
+        else:
+            st.warning(f"A Classe 0 foi predita com maior probabilidade ({predictions_df['p0'][0]:.2f})!")
     except Exception as e:
         st.write("❌ Erro ao realizar predição...", str(e))
 
