@@ -304,7 +304,7 @@ if submit_button:
         # Carregar o modelo H2O
         model = h2o.import_mojo(model_filename)
         
-        st.write("Modelo carregado com sucesso!")
+        st.write("✅ Modelo carregado com sucesso!")
     except Exception as e:
         st.write("❌ Erro ao carregar modelo...", str(e))
 
@@ -314,5 +314,8 @@ if submit_button:
         predictions = model.predict(h2o_df)
         predictions_df = predictions.as_data_frame()
         st.write(predictions_df)
+        st.write("✅ Predição realizada com sucesso!")
+    except Exception as e:
+        st.write("❌ Erro ao realizar predição...", str(e))
 
 
