@@ -95,7 +95,7 @@ try:
     Neste caso, o AUC de **0.9123** sugere que o modelo tem um excelente desempenho na diferenciação entre as classes.
     """
 )
-    
+    st.markdown("**Shap Values**")
     st.image("assets/shap_importance.png", caption="Gráfico de Importância dos Atributos via SHAP")
 
 
