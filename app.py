@@ -4,7 +4,7 @@ import os
 import joblib
 import h2o
 import gdown
-import matplotlib as plt
+import plotly.graph_objects as go
 from h2o.estimators import H2OGenericEstimator
 
 # Título do formulário
@@ -319,17 +319,28 @@ if submit_button:
         
         st.markdown("### Resultado da Predição:")
         
-        # Criar um gráfico para mostrar as probabilidades das classes
-        fig, ax = plt.subplots()
-        classes = ['Classe 0 - Longa Sobrevida', 'Classe 1 - Baixa Sobrevida']
-        probabilidades = [predictions_df['p0'][0], predictions_df['p1'][0]]
-        
-        ax.bar(classes, probabilidades, color=['green', 'red'])
-        ax.set_ylabel("Probabilidade")
-        ax.set_title("Distribuição das Probabilidades das Classes")
+        # Criar um gráfico interativo usando Plotly
+        fig = go.Figure()
+
+        # Adicionar barras para cada classe
+        fig.add_trace(go.Bar(
+            x=['Classe 0 - Longa Sobrevida', 'Classe 1 - Baixa Sobrevida'],
+            y=[predictions_df['p0'][0], predictions_df['p1'][0]],
+            marker=dict(color=['green', 'red']),  # Define cores das barras
+            text=[f"{predictions_df['p0'][0]:.2%}", f"{predictions_df['p1'][0]:.2%}"],  # Exibe porcentagem
+            textposition='auto'
+        ))
+
+        # Configurar título e eixos
+        fig.update_layout(
+            title="Distribuição das Probabilidades das Classes",
+            xaxis_title="Classes",
+            yaxis_title="Probabilidade",
+            template="plotly_white"  # Tema mais clean
+        )
 
         # Exibir o gráfico no Streamlit
-        st.pyplot(fig)
+        st.plotly_chart(fig)
         
         if predictions_df['predict'][0] == 1:
             st.success(f"A Classe 1 - Baixa Sobrevida - foi predita com probabilidade maior que o limiar de 57,17%: ({predictions_df['p1'][0]:.2f})")
