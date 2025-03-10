@@ -6,7 +6,6 @@ import h2o
 import gdown
 import plotly.graph_objects as go
 from h2o.estimators import H2OGenericEstimator
-from st_pages import Page, show_pages, add_page_title
 
 st.set_page_config(page_title="Aplicação", page_icon="🏠")
 
