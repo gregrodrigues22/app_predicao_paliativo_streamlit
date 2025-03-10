@@ -5,6 +5,8 @@ import joblib
 import h2o
 import gdown
 import plotly.graph_objects as go
+import lime
+import lime.lime_tabular
 from h2o.estimators import H2OGenericEstimator
 
 # Título do formulário
@@ -310,6 +312,7 @@ if submit_button:
         st.write("❌ Erro ao carregar modelo...", str(e))
 
     #Mostrando predição
+    
     try:
         h2o_df = h2o.H2OFrame(df_input_scaled)
         predictions = model.predict(h2o_df)
@@ -343,9 +346,49 @@ if submit_button:
         st.plotly_chart(fig)
         
         if predictions_df['predict'][0] == 1:
-            st.success(f"A Classe 1 - Baixa Sobrevida - foi predita com probabilidade maior que o limiar de 57,17%: ({predictions_df['p1'][0]:.2f})")
+            st.success(f"A Classe 1 - Baixa Sobrevida - foi predita com probabilidade maior que o limiar de 57,17%. Portanto, classe a situação predita é de Baixa Sobrevida. 
         else:
-            st.warning(f"A Classe 0 - Longa Sobrevida - foi predita com probabilidade maior que o limiar de 42,83%: ({predictions_df['p0'][0]:.2f})")
+            st.warning(f"A Classe 0 - Longa Sobrevida - foi predita com probabilidade maior que o limiar de 42,83%. Portanto, classe a situação predita é de Longa Sobrevida.
+
+        st.markdown("### Explicação da Predição:")
+
+
+        # Selecionar uma instância para explicação (exemplo: primeira linha do dataset)
+        instance_index = 0  # Pode ser alterado para outra instância
+        instance = df_input_scaled.iloc[instance_index].values.reshape(1, -1)
+        
+        # Criar o explicador LIME com os dados já escalonados
+        explainer = lime.lime_tabular.LimeTabularExplainer(
+            training_data=df_input_scaled.values,  # Passamos os dados escalonados diretamente
+            feature_names=df_input_scaled.columns,
+            class_names=['Longa Sobrevida', 'Baixa Sobrevida'],
+            mode="classification"
+        )
+        
+        # Criamos uma função que apenas retorna os valores corretos para LIME
+        def predict_for_lime(instance):
+            return np.array([predictions_df[['p0', 'p1']].iloc[0].values])  # Retorna apenas probabilidades
+        
+        # Gerar explicação para a instância escolhida
+        exp = explainer.explain_instance(
+            instance[0], 
+            predict_for_lime  # Função usando predições já calculadas
+        )
+        
+        # Converter explicação para DataFrame
+        exp_list = exp.as_list()
+        exp_df = pd.DataFrame(exp_list, columns=["Feature", "Importance"])
+        
+        # Criar gráfico interativo com Plotly
+        fig = px.bar(
+            exp_df, x="Importance", y="Feature", orientation='h',
+            title="Explicação da Predição com LIME"
+        )
+        
+        # Exibir no Streamlit
+        st.plotly_chart(fig)
+
+    
     except Exception as e:
         st.write("❌ Erro ao realizar predição...", str(e))
 
