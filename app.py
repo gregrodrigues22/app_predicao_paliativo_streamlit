@@ -336,18 +336,18 @@ if submit_button:
             textposition='auto',
         ))
         
-        # Adicionar linha do limiar **para a Classe 0** (linha horizontal completa)
+        # Adicionar linha do limiar **para a Classe 0** (sobre a barra verde)
         fig.add_trace(go.Scatter(
-            x=['Classe 0 - Longa Sobrevida', 'Classe 1 - Baixa Sobrevida'],  # Agora atravessa todo o gráfico
+            x=['Classe 0 - Longa Sobrevida', 'Classe 0 - Longa Sobrevida'],  # Apenas na barra verde
             y=[limiar_classe_0, limiar_classe_0],  # Linha no valor do limiar da classe 0
             mode="lines",
             line=dict(color="blue", dash="dash"),
             name=f"Limiar Classe 0 ({limiar_classe_0:.2%})"
         ))
         
-        # Adicionar linha do limiar **para a Classe 1** (linha horizontal completa)
+        # Adicionar linha do limiar **para a Classe 1** (sobre a barra vermelha)
         fig.add_trace(go.Scatter(
-            x=['Classe 0 - Longa Sobrevida', 'Classe 1 - Baixa Sobrevida'],  # Agora atravessa todo o gráfico
+            x=['Classe 1 - Baixa Sobrevida', 'Classe 1 - Baixa Sobrevida'],  # Apenas na barra vermelha
             y=[limiar_classe_1, limiar_classe_1],  # Linha no valor do limiar da classe 1
             mode="lines",
             line=dict(color="purple", dash="dash"),
@@ -362,10 +362,10 @@ if submit_button:
             yaxis=dict(range=[0, 1]),  # Garante que o eixo Y vai de 0 a 1
             showlegend=True  # Exibe as legendas
         )
-
-        # Exibir o gráfico no Streamlit
-        st.plotly_chart(fig)
         
+        # Exibir no Streamlit
+        st.plotly_chart(fig)
+
         if predictions_df['predict'][0] == 1:
             st.success("A Classe 1 - Baixa Sobrevida - foi predita com probabilidade maior que o limiar de 57,17%. Portanto, classe predita para o paciente em questão é de Baixa Sobrevida") 
         else:
