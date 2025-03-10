@@ -10,6 +10,8 @@ from h2o.estimators import H2OGenericEstimator
 # Título do formulário
 st.title("Explicação do Modelo")
 
+st.markdown("Este é um texto com **negrito** usando Markdown.")
+
 st.write(
     "Problema: A transição do cuidado curativo para o paliativo ainda é um desafio na prática clínica, especialmente para pacientes com câncer atendidos em serviços de emergência. Muitos médicos tendem a ser excessivamente otimistas em relação à sobrevida de seus pacientes, o que pode atrasar a recomendação para cuidados paliativos"
 )
