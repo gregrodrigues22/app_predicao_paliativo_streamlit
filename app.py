@@ -323,21 +323,31 @@ if submit_button:
         # Criar um gráfico interativo usando Plotly
         fig = go.Figure()
 
-        # Adicionar barras para cada classe
+        # Adicionar as barras para as probabilidades das classes
         fig.add_trace(go.Bar(
             x=['Classe 0 - Longa Sobrevida', 'Classe 1 - Baixa Sobrevida'],
-            y=[predictions_df['p0'][0], predictions_df['p1'][0]],
-            marker=dict(color=['green', 'red']),  # Define cores das barras
-            text=[f"{predictions_df['p0'][0]:.2%}", f"{predictions_df['p1'][0]:.2%}"],  # Exibe porcentagem
-            textposition='auto'
+            y=[predictions_df['p0'][0], predictions_df['p1'][0]],  # Probabilidades
+            marker=dict(color=['green', 'red']),  # Cores das classes
+            text=[f"{predictions_df['p0'][0]:.2%}", f"{predictions_df['p1'][0]:.2%}"],  # Adicionar percentuais
+            textposition='auto',
         ))
-
-        # Configurar título e eixos
+        
+        # Adicionar linha do limiar
+        fig.add_trace(go.Scatter(
+            x=['Classe 0 - Longa Sobrevida', 'Classe 1 - Baixa Sobrevida'],
+            y=[0.4283, 0.5717],  # Linha no valor do limiar
+            mode="lines",
+            line=dict(color="blue", dash="dash"),
+            name=f"Limiar ({limiar:.0%})"
+        ))
+        
+        # Ajustar layout
         fig.update_layout(
             title="Distribuição das Probabilidades das Classes",
             xaxis_title="Classes",
             yaxis_title="Probabilidade",
-            template="plotly_white"  # Tema mais clean
+            yaxis=dict(range=[0, 1]),  # Garante que o eixo Y vai de 0 a 1
+            showlegend=True  # Exibe a legenda com o limiar
         )
 
         # Exibir o gráfico no Streamlit
