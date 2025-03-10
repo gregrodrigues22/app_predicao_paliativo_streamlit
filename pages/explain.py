@@ -52,6 +52,39 @@ try:
 
     st.subheader("📊 Métricas do Modelo")
     st.write(f"🔹 **AUC:** {auc:.4f}")
+
+    # Obter os valores de FPR e TPR para a curva ROC
+    fpr, tpr, _ = model_performance.roc()
+
+    # Criar o gráfico da Curva ROC com Plotly
+    fig_roc = go.Figure()
+
+    fig_roc.add_trace(go.Scatter(
+        x=fpr, y=tpr,
+        mode='lines',
+        name=f'Curva ROC (AUC = {auc:.4f})',
+        line=dict(color='blue')
+    ))
+    
+    fig_roc.add_trace(go.Scatter(
+        x=[0, 1], y=[0, 1],
+        mode='lines',
+        name='Baseline',
+        line=dict(dash='dash', color='gray')
+    ))
+    
+    fig_roc.update_layout(
+        title="Curva ROC",
+        xaxis_title="Taxa de Falsos Positivos",
+        yaxis_title="Taxa de Verdadeiros Positivos",
+        template="plotly_white"
+    )
+    
+    # Exibir no Streamlit
+    st.subheader("📈 Curva ROC do Modelo")
+    st.plotly_chart(fig_roc)
+
+
     st.write(f"🔹 **Log Loss:** {logloss:.4f}")
     st.write(f"🔹 **RMSE:** {rmse:.4f}")
     st.write(f"🔹 **MSE:** {mse:.4f}")
