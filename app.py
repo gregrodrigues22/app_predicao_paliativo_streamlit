@@ -356,8 +356,11 @@ if submit_button:
         
         st.write(h2o_df)
         h2o_df["target"] = 0  # Adiciona uma coluna fictícia de target
+        
         # Gerar a explicação SHAP apenas para essa instância
-        shap_values = model.explain_row(h2o_df, 0)  # O "0" indica que estamos explicando a primeira linha
+        shap_values = model.predict_contributions(h2o_df)
+        shap_df = shap_values.as_data_frame()
+        st.write(shap_df)
         
         # Converter para DataFrame para visualização
         shap_df = pd.DataFrame({
