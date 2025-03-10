@@ -7,6 +7,13 @@ import gdown
 import plotly.graph_objects as go
 from h2o.estimators import H2OGenericEstimator
 
+# Título do formulário
+st.title("Explicação do Modelo")
+
+st.write(
+    "Preencha os campos abaixo com os valores correspondentes às variáveis utilizadas no modelo preditivo."
+)
+
 #Baixando modelo
 try:
     # URL do modelo no Google Drive
