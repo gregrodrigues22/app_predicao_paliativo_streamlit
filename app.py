@@ -363,14 +363,23 @@ if submit_button:
         shap_df_melted = shap_df.T.reset_index()  # Transpõe e reseta o índice
         shap_df_melted.columns = ["Feature", "Importance"]  # Renomeia colunas
         
-        # Criar gráfico interativo com Plotly
-        fig = px.bar(
-            shap_df_melted,
-            x="Importance",
-            y="Feature",
-            orientation='h',
-            title="Explicação da Predição (SHAP) - Instância 0"
-        ) 
+        # Adicionar barras ao gráfico
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            y=shap_df_melted["Feature"],  # Eixo Y com os nomes das features
+            x=shap_df_melted["Importance"],  # Eixo X com a importância SHAP
+            orientation='h',  # Gráfico de barras horizontais
+            marker=dict(color=shap_df_melted["Importance"], colorscale="RdBu"),  # Cores para facilitar leitura
+        ))
+        
+        # Ajustar layout do gráfico
+        fig.update_layout(
+            title="Explicação da Predição (SHAP) - Instância 0",
+            xaxis_title="Importância SHAP",
+            yaxis_title="Feature",
+            xaxis=dict(showgrid=True),
+            yaxis=dict(showgrid=False),
+        )
         
         # Exibir no Streamlit
         st.plotly_chart(fig)
