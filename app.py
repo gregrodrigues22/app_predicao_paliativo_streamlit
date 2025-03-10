@@ -352,43 +352,31 @@ if submit_button:
             st.warning("A Classe 0 - Longa Sobrevida - foi predita com probabilidade maior que o limiar de 42,83%. Portanto, classe predita para o paciente em questão é de Longa Sobrevida")
 
         st.markdown("### Explicação da Predição:")
-
-
-        # Selecionar uma instância para explicação (exemplo: primeira linha do dataset)
-        instance_index = 0  # Pode ser alterado para outra instância
-        instance = df_input_scaled.iloc[instance_index].values.reshape(1, -1)
         
-        # Criar o explicador LIME com os dados já escalonados
-        explainer = lime.lime_tabular.LimeTabularExplainer(
-            training_data=df_input_scaled.values,  # Passamos os dados escalonados diretamente
-            feature_names=df_input_scaled.columns,
-            class_names=['Longa Sobrevida', 'Baixa Sobrevida'],
-            mode="classification"
-        )
+        # Escolher a instância para explicação
+        instance_index = 0  # Modifique para outra instância, se necessário
+        instance = df_input_scaled.iloc[[instance_index]]  # Pegamos uma linha específica
         
-        # Criamos uma função que apenas retorna os valores corretos para LIME
-        def predict_for_lime(instance):
-            return np.array([predictions_df[['p0', 'p1']].iloc[0].values])  # Retorna apenas probabilidades
+        # Converter a instância para H2OFrame
+        instance_h2o = h2o.H2OFrame(instance)
         
-        # Gerar explicação para a instância escolhida
-        exp = explainer.explain_instance(
-            instance[0], 
-            predict_for_lime  # Função usando predições já calculadas
-        )
+        # Gerar a explicação SHAP apenas para essa instância
+        shap_values = model.explain_row(instance_h2o, 0)  # O "0" indica que estamos explicando a primeira linha
         
-        # Converter explicação para DataFrame
-        exp_list = exp.as_list()
-        exp_df = pd.DataFrame(exp_list, columns=["Feature", "Importance"])
+        # Converter para DataFrame para visualização
+        shap_df = pd.DataFrame({
+            "Feature": df_input_scaled.columns,
+            "Importance": shap_values['shap_contributions'][0].as_data_frame().values.flatten()
+        })
         
         # Criar gráfico interativo com Plotly
         fig = px.bar(
-            exp_df, x="Importance", y="Feature", orientation='h',
-            title="Explicação da Predição com LIME"
+            shap_df, x="Importance", y="Feature", orientation='h',
+            title=f"Explicação da Predição (SHAP) - Instância {instance_index}"
         )
         
         # Exibir no Streamlit
         st.plotly_chart(fig)
-
     
     except Exception as e:
         st.write("❌ Erro ao realizar predição...", str(e))
