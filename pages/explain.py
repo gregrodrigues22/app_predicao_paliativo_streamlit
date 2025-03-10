@@ -51,6 +51,11 @@ try:
     r2 = model_performance.r2()  # Coeficiente de determinação R²
 
     st.subheader("📊 Métricas do Modelo")
+    st.write(f"🔹 **AUC:** {auc:.4f}")
+    st.write(f"🔹 **Log Loss:** {logloss:.4f}")
+    st.write(f"🔹 **RMSE:** {rmse:.4f}")
+    st.write(f"🔹 **MSE:** {mse:.4f}")
+    st.write(f"🔹 **R²:** {r2:.4f}")
         
 except Exception as e:
         st.write("❌ Erro ao carregar modelo...", str(e))
