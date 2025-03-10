@@ -355,6 +355,7 @@ if submit_button:
         instance = df_input_scaled.iloc[[instance_index]]  # Pegamos uma linha específica
         
         st.write(h2o_df)
+        h2o_df["target"] = 0  # Adiciona uma coluna fictícia de target
         # Gerar a explicação SHAP apenas para essa instância
         shap_values = model.explain_row(h2o_df, 0)  # O "0" indica que estamos explicando a primeira linha
         
