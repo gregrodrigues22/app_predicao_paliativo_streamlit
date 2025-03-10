@@ -96,13 +96,7 @@ try:
     """
 )
     
-    shap_values = model.explain_row(instance)  # Supondo que esteja usando H2O
-
-    shap_df = pd.DataFrame({
-        "Feature": df_input_scaled.columns,
-        "Importance": shap_values['shap_contributions'][0].as_data_frame().values.flatten()
-    })
-
+    st.image("shap_importance.png", caption="Gráfico de Importância dos Atributos via SHAP", use_column_width=True)
 
 
     st.write(f"🔹 **Log Loss:** {logloss:.4f}")
