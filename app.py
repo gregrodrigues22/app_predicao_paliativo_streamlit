@@ -354,13 +354,13 @@ if submit_button:
         instance_index = 0  # Modifique para outra instância, se necessário
         instance = df_input_scaled.iloc[[instance_index]]  # Pegamos uma linha específica
         
-        st.write(h2o_df)
         h2o_df["target"] = 0  # Adiciona uma coluna fictícia de target
         
         # Gerar a explicação SHAP apenas para essa instância
         shap_values = model.predict_contributions(h2o_df)
         shap_df = shap_values.as_data_frame()
         shap_df = shap_df.drop(columns=["BiasTerm"], errors="ignore")
+        st.write(shap_df)
         
         # Converter para DataFrame para visualização
         shap_df = pd.DataFrame({
