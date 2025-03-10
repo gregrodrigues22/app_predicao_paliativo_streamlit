@@ -394,7 +394,7 @@ if submit_button:
         
         # Ajustar layout do gráfico
         fig.update_layout(
-            title="Explicação da Predição (SHAP) - Instância 0",
+            title="Explicação da Predição (SHAP) - Paciente em avaliação",
             xaxis_title="Importância SHAP",
             yaxis_title="Feature",
             xaxis=dict(showgrid=True),
