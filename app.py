@@ -4,7 +4,6 @@ import os
 import joblib
 import h2o
 import gdown
-import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 from h2o.estimators import H2OGenericEstimator
 
