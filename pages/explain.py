@@ -54,7 +54,7 @@ try:
     st.write(f"🔹 **AUC:** {auc:.4f}")
 
     # Obter os valores de FPR e TPR para a curva ROC
-    fpr, tpr, _ = model_performance.roc()
+    fpr, tpr = model_performance.roc()
 
     # Criar o gráfico da Curva ROC com Plotly
     fig_roc = go.Figure()
