@@ -125,12 +125,10 @@ try:
     Sobreposição de cores indica que a relação da variável com a predição pode ser complexa, não apenas linear.
 
     5. Aplicação do modelo
-    • ECOG : Um ECOG alto está fortemente associado a um aumento da predição de baixa sobrevida.<br>
-    • Internação recente: O fato de estar entre as variáveis mais influentes indica que pacientes recentemente internados têm uma maior probabilidade de baixa sobrevida.  
-    
-    • ICD: Refere-se ao código da condição clínica primária do paciente. A ampla distribuição de valores SHAP sugere que diferentes códigos ICD têm pesos distintos na decisão do modelo.
-    
-    • HR_knn e OS_knn: Parâmetros relacionados ao histórico do paciente e condições vitais. O impacto deles pode indicar que variações em sinais vitais afetam diretamente a predição.
+    >• ECOG : Um ECOG alto está fortemente associado a um aumento da predição de baixa sobrevida.
+    >• Internação recente: O fato de estar entre as variáveis mais influentes indica que pacientes recentemente internados têm uma maior probabilidade de baixa sobrevida.  
+    >• ICD: Refere-se ao código da condição clínica primária do paciente. A ampla distribuição de valores SHAP sugere que diferentes códigos ICD têm pesos distintos na decisão do modelo.
+    >• HR_knn e OS_knn: Parâmetros relacionados ao histórico do paciente e condições vitais. O impacto deles pode indicar que variações em sinais vitais afetam diretamente a predição.
     
     """
 )
