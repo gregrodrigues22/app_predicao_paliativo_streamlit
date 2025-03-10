@@ -12,7 +12,7 @@ st.set_page_config(
 )
 
 # Título do formulário
-st.title("Predição de Sobrevida")
+st.title("Predição de Sobrevida na Emergência para Pacientes Oncológicos")
 
 st.write(
     "Preencha os campos abaixo com os valores correspondentes às variáveis utilizadas no modelo preditivo."
