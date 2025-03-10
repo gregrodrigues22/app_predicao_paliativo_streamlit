@@ -350,18 +350,38 @@ if submit_button:
 
         st.markdown("### Explicação da Predição:")
         
-        # Escolher a instância para explicação
-        instance_index = 0  # Modifique para outra instância, se necessário
-        instance = df_input_scaled.iloc[[instance_index]]  # Pegamos uma linha específica
-        
-        h2o_df["target"] = 0  # Adiciona uma coluna fictícia de target
-        
         # Gerar a explicação SHAP apenas para essa instância
         shap_values = model.predict_contributions(h2o_df)
         shap_df = shap_values.as_data_frame()
         shap_df = shap_df.drop(columns=["BiasTerm"], errors="ignore")
         shap_df_melted = shap_df.T.reset_index()  # Transpõe e reseta o índice
         shap_df_melted.columns = ["Feature", "Importance"]  # Renomeia colunas
+        
+        rename_dict = {
+            "BMI_knn": "IMC",
+            "HR_knn": "Frequência Cardíaca",
+            "MBP_knn": "Pressão Média",
+            "OS_knn": "Saturação de Oxigênio",
+            "Weight_knn": "Peso",
+            "Height_knn": "Altura",
+            "TI_median": "Tempo entre Consulta e PS",
+            "ECOG_median": "ECOG",
+            "missing_bmi": "IMC ausente",
+            "missing_ecog": "ECOG ausente",
+            "Gender_binary": "Sexo",
+            "TDR_binary": "Internação Recente",
+            "Tendency_ordinal": "Tendência",
+            "Age": "Idade",
+            "Status_priority": "Prioridade Status",
+            "ICD": "CID",
+            "Status_Original": "Status Original"
+        }
+        
+        # Aplicar os novos nomes das features
+        shap_df_melted["Feature"] = shap_df_melted["Feature"].replace(rename_dict)
+
+        # Ordenar pela importância absoluta (valores mais influentes primeiro)
+        shap_df_melted = shap_df_melted.reindex(shap_df_melted["Importance"].abs().sort_values(ascending=True).index)
         
         # Adicionar barras ao gráfico
         fig = go.Figure()
