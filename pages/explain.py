@@ -6,11 +6,9 @@ import h2o
 import gdown
 import plotly.graph_objects as go
 from h2o.estimators import H2OGenericEstimator
-from st_pages import Page, show_pages, add_page_title
 
 #Baixando modelo
     try:
-
         # URL do modelo no Google Drive
         file_id = "1IEGIuHt1l8xwR_Jl5J_fuKf0h5Fkdwx2"  # Substitua pelo ID do seu arquivo
         url = f"https://drive.google.com/uc?id={file_id}"
@@ -35,5 +33,6 @@ from st_pages import Page, show_pages, add_page_title
         st.session_state['model'] = model
         
         st.write("✅ Modelo carregado com sucesso!")
+        
     except Exception as e:
         st.write("❌ Erro ao carregar modelo...", str(e))
