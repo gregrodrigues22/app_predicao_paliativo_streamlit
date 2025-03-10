@@ -320,13 +320,6 @@ if submit_button:
         
         st.markdown("### Resultado da Predição:")
 
-        # Definir os limiares para cada classe
-        limiar_classe_0 = 0.4283  # Ajuste conforme necessário
-        limiar_classe_1 = 0.5717  # Ajuste conforme necessário
-        
-        # Criar figura
-        fig = go.Figure()
-        
         # Adicionar as barras para as probabilidades das classes
         fig.add_trace(go.Bar(
             x=['Classe 0 - Longa Sobrevida', 'Classe 1 - Baixa Sobrevida'],
@@ -336,18 +329,18 @@ if submit_button:
             textposition='auto',
         ))
         
-        # Adicionar linha do limiar **para a Classe 0** (sobre a barra verde)
+        # Adicionar linha do limiar **para a Classe 0** (linha horizontal completa)
         fig.add_trace(go.Scatter(
-            x=['Classe 0 - Longa Sobrevida', 'Classe 0 - Longa Sobrevida'],  # Apenas na barra verde
+            x=['Classe 0 - Longa Sobrevida', 'Classe 1 - Baixa Sobrevida'],  # Agora atravessa todo o gráfico
             y=[limiar_classe_0, limiar_classe_0],  # Linha no valor do limiar da classe 0
             mode="lines",
             line=dict(color="blue", dash="dash"),
             name=f"Limiar Classe 0 ({limiar_classe_0:.2%})"
         ))
         
-        # Adicionar linha do limiar **para a Classe 1** (sobre a barra vermelha)
+        # Adicionar linha do limiar **para a Classe 1** (linha horizontal completa)
         fig.add_trace(go.Scatter(
-            x=['Classe 1 - Baixa Sobrevida', 'Classe 1 - Baixa Sobrevida'],  # Apenas na barra vermelha
+            x=['Classe 0 - Longa Sobrevida', 'Classe 1 - Baixa Sobrevida'],  # Agora atravessa todo o gráfico
             y=[limiar_classe_1, limiar_classe_1],  # Linha no valor do limiar da classe 1
             mode="lines",
             line=dict(color="purple", dash="dash"),
@@ -362,7 +355,7 @@ if submit_button:
             yaxis=dict(range=[0, 1]),  # Garante que o eixo Y vai de 0 a 1
             showlegend=True  # Exibe as legendas
         )
-        
+
         # Exibir no Streamlit
         st.plotly_chart(fig)
 
