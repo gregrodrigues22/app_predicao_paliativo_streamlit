@@ -4,6 +4,7 @@ import os
 import joblib
 import h2o
 import gdown
+import numpy as np
 import plotly.graph_objects as go
 import lime
 import lime.lime_tabular
