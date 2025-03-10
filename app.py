@@ -16,7 +16,7 @@ pagina = st.sidebar.radio("Selecione uma página:", ["🏠 Aplicação", "📑 E
 
 # Verificar qual página foi escolhida
 if pagina == "🏠 Aplicação":
-    st.switch_page("pages/app.py")  # Caminho correto para sua página
+    st.switch_page("app.py")  # Caminho correto para sua página
 
 elif pagina == "📑 Explicação":
     st.switch_page("pages/app_explicacao.py")  # Caminho correto para sua página
