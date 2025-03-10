@@ -7,6 +7,10 @@ import gdown
 import plotly.graph_objects as go
 from h2o.estimators import H2OGenericEstimator
 
+# Configurar múltiplas páginas
+st.sidebar.title("Menu")
+pagina = st.sidebar.radio("Selecione uma página:", ["Aplicação", "Explicação"])
+
 # Título do formulário
 st.title("Predição de Sobrevida")
 
