@@ -319,7 +319,10 @@ if submit_button:
         #st.write("✅ Predição realizada com sucesso!")
         
         st.markdown("### Resultado da Predição:")
-
+        # Definir os limiares para cada classe
+        limiar_classe_0 = 0.4283  # Ajuste conforme necessário
+        limiar_classe_1 = 0.5717  # Ajuste conforme necessário
+        
         fig = go.Figure()
         
         # Adicionar as barras para as probabilidades das classes
