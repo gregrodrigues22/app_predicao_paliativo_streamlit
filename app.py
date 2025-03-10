@@ -319,7 +319,7 @@ if submit_button:
         #st.write("✅ Predição realizada com sucesso!")
         
         st.markdown("### Resultado da Predição:")
-        
+
         # Definir os limiares para cada classe
         limiar_classe_0 = 0.4283  # Ajuste conforme necessário
         limiar_classe_1 = 0.5717  # Ajuste conforme necessário
@@ -336,18 +336,18 @@ if submit_button:
             textposition='auto',
         ))
         
-        # Adicionar linha do limiar **para a Classe 0**
+        # Adicionar linha do limiar **para a Classe 0** (linha horizontal completa)
         fig.add_trace(go.Scatter(
-            x=['Classe 0 - Longa Sobrevida', 'Classe 0 - Longa Sobrevida'],
+            x=['Classe 0 - Longa Sobrevida', 'Classe 1 - Baixa Sobrevida'],  # Agora atravessa todo o gráfico
             y=[limiar_classe_0, limiar_classe_0],  # Linha no valor do limiar da classe 0
             mode="lines",
             line=dict(color="blue", dash="dash"),
             name=f"Limiar Classe 0 ({limiar_classe_0:.2%})"
         ))
         
-        # Adicionar linha do limiar **para a Classe 1**
+        # Adicionar linha do limiar **para a Classe 1** (linha horizontal completa)
         fig.add_trace(go.Scatter(
-            x=['Classe 1 - Baixa Sobrevida', 'Classe 1 - Baixa Sobrevida'],
+            x=['Classe 0 - Longa Sobrevida', 'Classe 1 - Baixa Sobrevida'],  # Agora atravessa todo o gráfico
             y=[limiar_classe_1, limiar_classe_1],  # Linha no valor do limiar da classe 1
             mode="lines",
             line=dict(color="purple", dash="dash"),
