@@ -320,8 +320,9 @@ if submit_button:
         
         st.markdown("### Resultado da Predição:")
         
-        # Definir o limiar como a **probabilidade mínima** necessária para a classificação
-        limiar = 0.5717 if predictions_df['predict'][0] == 1 else 0.4283  # Ajuste conforme a lógica de decisão do modelo
+        # Definir os limiares para cada classe
+        limiar_classe_0 = 0.4283  # Ajuste conforme necessário
+        limiar_classe_1 = 0.5717  # Ajuste conforme necessário
         
         # Criar figura
         fig = go.Figure()
@@ -335,13 +336,22 @@ if submit_button:
             textposition='auto',
         ))
         
-        # Adicionar linha do limiar **dinâmico**
+        # Adicionar linha do limiar **para a Classe 0**
         fig.add_trace(go.Scatter(
-            x=['Classe 0 - Longa Sobrevida', 'Classe 1 - Baixa Sobrevida'],
-            y=[limiar, limiar],  # Linha no valor do limiar calculado
+            x=['Classe 0 - Longa Sobrevida', 'Classe 0 - Longa Sobrevida'],
+            y=[limiar_classe_0, limiar_classe_0],  # Linha no valor do limiar da classe 0
             mode="lines",
             line=dict(color="blue", dash="dash"),
-            name=f"Limiar ({limiar:.2%})"  # Exibir valor real do limiar na legenda
+            name=f"Limiar Classe 0 ({limiar_classe_0:.2%})"
+        ))
+        
+        # Adicionar linha do limiar **para a Classe 1**
+        fig.add_trace(go.Scatter(
+            x=['Classe 1 - Baixa Sobrevida', 'Classe 1 - Baixa Sobrevida'],
+            y=[limiar_classe_1, limiar_classe_1],  # Linha no valor do limiar da classe 1
+            mode="lines",
+            line=dict(color="purple", dash="dash"),
+            name=f"Limiar Classe 1 ({limiar_classe_1:.2%})"
         ))
                 
         # Ajustar layout
