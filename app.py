@@ -6,7 +6,11 @@ import h2o
 import gdown
 import plotly.graph_objects as go
 from h2o.estimators import H2OGenericEstimator
-    
+
+st.set_page_config(
+        page_title="🏠 Aplicação",
+)
+
 # Título do formulário
 st.title("Predição de Sobrevida")
 
