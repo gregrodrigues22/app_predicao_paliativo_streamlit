@@ -12,13 +12,9 @@ st.title("Explicação do Modelo")
 
 st.markdown("**Problema**: A transição do cuidado curativo para o paliativo ainda é um desafio na prática clínica, especialmente para pacientes com câncer atendidos em serviços de emergência. Muitos médicos tendem a ser excessivamente otimistas em relação à sobrevida de seus pacientes, o que pode atrasar a recomendação para cuidados paliativos")
 
-st.write(
-    "Problema: A transição do cuidado curativo para o paliativo ainda é um desafio na prática clínica, especialmente para pacientes com câncer atendidos em serviços de emergência. Muitos médicos tendem a ser excessivamente otimistas em relação à sobrevida de seus pacientes, o que pode atrasar a recomendação para cuidados paliativos"
-)
+st.markdown("**Solução**: Este aplicativo utiliza um modelo de aprendizado de máquina desenvolvido a partir de dados reais de pacientes atendidos no pronto-socorro do Instituto do Câncer do Estado de São Paulo (ICESP). O objetivo é prever a sobrevida de curto prazo (menos de seis meses) e longo prazo (mais de seis meses) desses pacientes a partir de variáveis clínicas e demográficas disponíveis no momento da admissão na emergência.")
 
-st.write(
-    "Problema: A transição do cuidado curativo para o paliativo ainda é um desafio na prática clínica, especialmente para pacientes com câncer atendidos em serviços de emergência. Muitos médicos tendem a ser excessivamente otimistas em relação à sobrevida de seus pacientes, o que pode atrasar a recomendação para cuidados paliativos"
-)
+st.markdown("**Metodologia**: A metodologia aplicada envolve modelos de aprendizado de máquina, como Gradient Boosting Machine (GBM), para analisar fatores como idade, diagnóstico oncológico, estado clínico na emergência, sinais vitais e o escore funcional (ECOG) da última consulta eletiva. O modelo foi validado e apresentou alto desempenho, demonstrando que é possível identificar, de forma automatizada e com alta precisão, pacientes que podem se beneficiar de uma avaliação mais detalhada para cuidados paliativos.")
 
 #Baixando modelo
 try:
