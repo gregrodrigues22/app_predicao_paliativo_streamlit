@@ -320,6 +320,8 @@ if submit_button:
         
         st.markdown("### Resultado da Predição:")
 
+        fig = go.Figure()
+        
         # Adicionar as barras para as probabilidades das classes
         fig.add_trace(go.Bar(
             x=['Classe 0 - Longa Sobrevida', 'Classe 1 - Baixa Sobrevida'],
