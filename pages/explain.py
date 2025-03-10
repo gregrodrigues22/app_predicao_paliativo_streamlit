@@ -95,6 +95,13 @@ try:
     Neste caso, o AUC de **0.9123** sugere que o modelo tem um excelente desempenho na diferenciação entre as classes.
     """
 )
+    
+    shap_values = model.explain_row(instance)  # Supondo que esteja usando H2O
+
+    shap_df = pd.DataFrame({
+        "Feature": df_input_scaled.columns,
+        "Importance": shap_values['shap_contributions'][0].as_data_frame().values.flatten()
+    })
 
 
 
