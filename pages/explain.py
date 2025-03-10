@@ -96,7 +96,7 @@ try:
     """
 )
     
-    st.image("assets/shap_importance.png", caption="Gráfico de Importância dos Atributos via SHAP", use_column_width=True)
+    st.image("assets/shap_importance.png", caption="Gráfico de Importância dos Atributos via SHAP")
 
 
     st.write(f"🔹 **Log Loss:** {logloss:.4f}")
