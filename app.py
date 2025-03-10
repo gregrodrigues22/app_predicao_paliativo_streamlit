@@ -304,6 +304,7 @@ if submit_button:
 
         # Carregar o modelo H2O
         model = h2o.import_mojo(model_filename)
+        st.session_state['model'] = model
         
         st.write("✅ Modelo carregado com sucesso!")
     except Exception as e:
