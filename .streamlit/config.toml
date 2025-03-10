@@ -1,10 +1,13 @@
-[ui]
-page_title = "Minha Aplicação"  # Nome da aba do navegador
-page_icon = "📊"  # Ícone opcional
-
 [theme]
 base="light"
 
-[pages]
+[server]
+headless = true
+
+[ui]
+page_title = "Minha Aplicação"  # Nome correto
+page_icon = "📊"  # Ícone correto
+
+[pages]  # Correção do caminho das páginas
 "app.py" = "🏠 Aplicação"
-"pages/app_explicacao.py" = "📖 Explicação"
+"pages/app_explicacao.py" = "📄 Explicação"
