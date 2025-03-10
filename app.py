@@ -8,6 +8,8 @@ import plotly.graph_objects as go
 from h2o.estimators import H2OGenericEstimator
 import toml
 
+config_path = ".streamlit/config.toml"
+
 try:
     with open(config_path, "r") as file:
         config_data = toml.load(file)
