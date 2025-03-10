@@ -354,11 +354,8 @@ if submit_button:
         instance_index = 0  # Modifique para outra instância, se necessário
         instance = df_input_scaled.iloc[[instance_index]]  # Pegamos uma linha específica
         
-        # Converter a instância para H2OFrame
-        instance_h2o = h2o.H2OFrame(instance)
-        
         # Gerar a explicação SHAP apenas para essa instância
-        shap_values = model.explain_row(instance_h2o, 0)  # O "0" indica que estamos explicando a primeira linha
+        shap_values = model.explain_row(h2o_df, 0)  # O "0" indica que estamos explicando a primeira linha
         
         # Converter para DataFrame para visualização
         shap_df = pd.DataFrame({
