@@ -363,12 +363,6 @@ if submit_button:
         shap_df_melted = shap_df.T.reset_index()  # Transpõe e reseta o índice
         shap_df_melted.columns = ["Feature", "Importance"]  # Renomeia colunas
         
-        # Converter para DataFrame para visualização
-        shap_df = pd.DataFrame({
-            "Feature": df_input_scaled.columns,
-            "Importance": shap_values['shap_contributions'][0].as_data_frame().values.flatten()
-        })
-        
         # Criar gráfico interativo com Plotly
         fig = px.bar(
             shap_df_melted,
