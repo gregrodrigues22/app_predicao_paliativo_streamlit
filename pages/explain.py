@@ -80,8 +80,22 @@ try:
     )
     
     # Exibir no Streamlit
-    st.write("Curva ROC do Modelo")
     st.plotly_chart(fig_roc)
+    st.markdown(
+    """
+    **Interpretação da Curva ROC:**  
+    A Curva ROC (Receiver Operating Characteristic) mostra o desempenho do modelo ao variar o limiar de decisão.  
+    - O eixo **X** representa a **Taxa de Falsos Positivos (FPR)**, ou seja, a proporção de negativos que foram incorretamente classificados como positivos.  
+    - O eixo **Y** representa a **Taxa de Verdadeiros Positivos (TPR)**, que indica a proporção de positivos corretamente identificados.  
+    - A linha pontilhada representa o **modelo aleatório**, enquanto a curva azul representa o modelo preditivo.  
+    - O valor de **AUC (Área Sob a Curva)** indica a capacidade do modelo em distinguir as classes.  
+      - Um **AUC próximo de 1** indica um modelo altamente discriminativo.  
+      - Um **AUC de 0.5** indica um modelo sem capacidade preditiva, equivalente ao acaso.  
+      
+    Neste caso, o AUC de **0.9123** sugere que o modelo tem um excelente desempenho na diferenciação entre as classes.
+    """
+)
+
 
 
     st.write(f"🔹 **Log Loss:** {logloss:.4f}")
