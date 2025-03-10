@@ -42,6 +42,16 @@ try:
     st.session_state['model'] = model
         
     st.write("✅ Modelo carregado com sucesso!")
+
+    model_performance = model.model_performance()
+    auc = model_performance.auc()  # Área sob a curva ROC
+    logloss = model_performance.logloss()  # Log Loss
+    rmse = model_performance.rmse()  # Root Mean Squared Error
+    mse = model_performance.mse()  # Mean Squared Error
+    r2 = model_performance.r2()  # Coeficiente de determinação R²
+
+    st.subheader("📊 Métricas do Modelo")
         
 except Exception as e:
         st.write("❌ Erro ao carregar modelo...", str(e))
+
