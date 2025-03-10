@@ -98,12 +98,36 @@ try:
     st.markdown("**Shap Values**")
     st.image("assets/shap_importance.png", caption="Gráfico de Importância dos Atributos via SHAP")
 
+    st.markdown(
+    """
+    O gráfico de importância dos atributos via SHAP mostra como cada variável contribui para as previsões do modelo. Cada ponto no gráfico representa um valor SHAP para uma observação do conjunto de dados.
 
-    st.write(f"🔹 **Log Loss:** {logloss:.4f}")
-    st.write(f"🔹 **RMSE:** {rmse:.4f}")
-    st.write(f"🔹 **MSE:** {mse:.4f}")
-    st.write(f"🔹 **R²:** {r2:.4f}")
-        
+    Elementos do Gráfico
+    
+    1. Eixo Y - Nome das variáveis:
+    Listadas do topo para a base, em ordem de importância.
+    Quanto mais alto na lista, maior a influência da variável na predição do modelo.
+    
+    2. Eixo X - Valor SHAP:
+    Indica a magnitude e a direção do impacto de cada variável na predição.
+    Valores positivos deslocam a predição para maior probabilidade da classe-alvo.
+    Valores negativos deslocam a predição para menor probabilidade da classe-alvo.
+    
+    3. Cores - Valor Normalizado da Variável:
+    Azul: Valores baixos da variável.
+    Rosa: Valores altos da variável.
+    Isso ajuda a entender a relação entre o valor da variável e sua influência no modelo.
+    
+    4. Como interpretar?
+    Variáveis com maior dispersão horizontal (ou seja, uma grande variação nos valores SHAP) indicam maior impacto nas predições do modelo.
+    Se os pontos de uma variável estiverem predominantemente na direita (valores SHAP positivos), essa variável aumenta a chance da classe predita.
+    Se os pontos estiverem na esquerda (valores SHAP negativos), essa variável reduz a chance da classe predita.
+    Sobreposição de cores indica que a relação da variável com a predição pode ser complexa, não apenas linear.
+
+    5. Aplicação do modelo
+    """
+)
+    
 except Exception as e:
         st.write("❌ Erro ao carregar modelo...", str(e))
 
