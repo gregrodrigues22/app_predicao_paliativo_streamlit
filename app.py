@@ -353,14 +353,14 @@ if submit_button:
             line=dict(color="purple", dash="dash"),
             name=f"Limiar Classe 1 ({limiar_classe_1:.2%})"
         ))
-                
+        
         # Ajustar layout
         fig.update_layout(
             title="Distribuição das Probabilidades das Classes",
             xaxis_title="Classes",
             yaxis_title="Probabilidade",
             yaxis=dict(range=[0, 1]),  # Garante que o eixo Y vai de 0 a 1
-            showlegend=True  # Exibe a legenda com o limiar
+            showlegend=True  # Exibe as legendas
         )
 
         # Exibir o gráfico no Streamlit
