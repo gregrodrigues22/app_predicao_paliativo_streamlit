@@ -6,21 +6,6 @@ import h2o
 import gdown
 import plotly.graph_objects as go
 from h2o.estimators import H2OGenericEstimator
-
-# Modificar o nome da aba do navegador
-st.set_page_config(page_title="Minha Aplicação", page_icon="📊")
-
-# Criar um menu na barra lateral
-st.sidebar.markdown("## **Menu**")
-pagina = st.sidebar.radio("Selecione uma página:", ["🏠 Aplicação", "📑 Explicação"])
-
-# Verificar qual página foi escolhida
-if pagina == "🏠 Aplicação":
-    st.switch_page("app.py")  # Caminho correto para sua página
-
-elif pagina == "📑 Explicação":
-    st.switch_page("pages/app_explicacao.py")  # Caminho correto para sua página
-
     
 # Título do formulário
 st.title("Predição de Sobrevida")
