@@ -83,7 +83,7 @@ try:
     st.plotly_chart(fig_roc)
     st.markdown(
     """
-    **Interpretação da Curva ROC:**  
+    Interpretação da Curva ROC:  
     A Curva ROC (Receiver Operating Characteristic) mostra o desempenho do modelo ao variar o limiar de decisão.  
     - O eixo **X** representa a **Taxa de Falsos Positivos (FPR)**, ou seja, a proporção de negativos que foram incorretamente classificados como positivos.  
     - O eixo **Y** representa a **Taxa de Verdadeiros Positivos (TPR)**, que indica a proporção de positivos corretamente identificados.  
