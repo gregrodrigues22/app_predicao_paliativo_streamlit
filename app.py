@@ -346,9 +346,9 @@ if submit_button:
         st.plotly_chart(fig)
         
         if predictions_df['predict'][0] == 1:
-            st.success(f"A Classe 1 - Baixa Sobrevida - foi predita com probabilidade maior que o limiar de 57,17%. Portanto, classe a situação predita é de Baixa Sobrevida. 
+            st.success("A Classe 1 - Baixa Sobrevida - foi predita com probabilidade maior que o limiar de 57,17%. Portanto, classe a situação predita é de Baixa Sobrevida") 
         else:
-            st.warning(f"A Classe 0 - Longa Sobrevida - foi predita com probabilidade maior que o limiar de 42,83%. Portanto, classe a situação predita é de Longa Sobrevida.
+            st.warning("A Classe 0 - Longa Sobrevida - foi predita com probabilidade maior que o limiar de 42,83%. Portanto, classe a situação predita é de Longa Sobrevida")
 
         st.markdown("### Explicação da Predição:")
 
