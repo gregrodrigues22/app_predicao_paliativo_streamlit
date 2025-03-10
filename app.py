@@ -360,7 +360,7 @@ if submit_button:
         # Gerar a explicação SHAP apenas para essa instância
         shap_values = model.predict_contributions(h2o_df)
         shap_df = shap_values.as_data_frame()
-        st.write(shap_df)
+        shap_df = shap_df.drop(columns=["BiasTerm"], errors="ignore")
         
         # Converter para DataFrame para visualização
         shap_df = pd.DataFrame({
@@ -370,8 +370,9 @@ if submit_button:
         
         # Criar gráfico interativo com Plotly
         fig = px.bar(
-            shap_df, x="Importance", y="Feature", orientation='h',
-            title=f"Explicação da Predição (SHAP) - Instância {instance_index}"
+            shap_df.melt(var_name="Feature", value_name="Importance"),
+            x="Importance", y="Feature", orientation='h',
+            title="Explicação da Predição (SHAP) - Instância 0"
         )
         
         # Exibir no Streamlit
