@@ -51,7 +51,6 @@ try:
     r2 = model_performance.r2()  # Coeficiente de determinação R²
 
     st.subheader("📊 Métricas do Modelo")
-    st.write(f"🔹 **AUC:** {auc:.4f}")
 
     # Obter os valores de FPR e TPR para a curva ROC
     fpr, tpr = model_performance.roc()
@@ -81,7 +80,7 @@ try:
     )
     
     # Exibir no Streamlit
-    st.subheader("📈 Curva ROC do Modelo")
+    st.write("Curva ROC do Modelo")
     st.plotly_chart(fig_roc)
 
 
