@@ -1,1 +1,10 @@
+[ui]
+page_title = "Minha Aplicação"  # Nome da aba do navegador
+page_icon = "📊"  # Ícone opcional
 
+[theme]
+base="light"
+
+[pages]
+"app.py" = "🏠 Aplicação"
+"pages/app_explicacao.py" = "📖 Explicação"
