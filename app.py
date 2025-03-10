@@ -320,9 +320,12 @@ if submit_button:
         
         st.markdown("### Resultado da Predição:")
         
-        # Criar um gráfico interativo usando Plotly
+        # Definir o limiar como a **probabilidade mínima** necessária para a classificação
+        limiar = 0.5717 if predictions_df['predict'][0] == 1 else 0.4283  # Ajuste conforme a lógica de decisão do modelo
+        
+        # Criar figura
         fig = go.Figure()
-
+        
         # Adicionar as barras para as probabilidades das classes
         fig.add_trace(go.Bar(
             x=['Classe 0 - Longa Sobrevida', 'Classe 1 - Baixa Sobrevida'],
@@ -332,15 +335,15 @@ if submit_button:
             textposition='auto',
         ))
         
-        # Adicionar linha do limiar
+        # Adicionar linha do limiar **dinâmico**
         fig.add_trace(go.Scatter(
             x=['Classe 0 - Longa Sobrevida', 'Classe 1 - Baixa Sobrevida'],
-            y=[0.4283, 0.5717],  # Linha no valor do limiar
+            y=[limiar, limiar],  # Linha no valor do limiar calculado
             mode="lines",
             line=dict(color="blue", dash="dash"),
-            name=f"Limiar ({limiar:.0%})"
+            name=f"Limiar ({limiar:.2%})"  # Exibir valor real do limiar na legenda
         ))
-        
+                
         # Ajustar layout
         fig.update_layout(
             title="Distribuição das Probabilidades das Classes",
