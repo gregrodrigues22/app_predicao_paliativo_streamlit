@@ -6,7 +6,15 @@ import h2o
 import gdown
 import plotly.graph_objects as go
 from h2o.estimators import H2OGenericEstimator
+import toml
 
+try:
+    with open(config_path, "r") as file:
+        config_data = toml.load(file)
+    st.sidebar.write("📄 Configuração carregada:", config_data)
+except FileNotFoundError:
+    st.sidebar.error("🚨 Arquivo config.toml não encontrado!")
+    
 # Título do formulário
 st.title("Predição de Sobrevida")
 
