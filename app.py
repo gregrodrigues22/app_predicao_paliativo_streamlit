@@ -101,7 +101,7 @@ with st.sidebar:
         )
 
 # --------------------------------------------------------------
-# CONTEÚDO PRINCIPAL DO APP 
+# CONTEÚDO PRINCIPAL DO APP
 # --------------------------------------------------------------
 
 st.title("Predição no PoC 📈🎯")
@@ -154,7 +154,7 @@ def get_model():
 
 cid_options_c_only = load_cids_filtered_for_c()
 
-# lista original (para encoding) — manter como estava
+# lista original (para encoding)
 status_options_full = [
     "Nenhuma das anteriores(Verde)",
     "Outras situações que requerem atend. com urgência intermediária - (Amarelo)",
@@ -178,158 +178,151 @@ status_options_full = [
 ]
 tendency_options = ["Estável", "Instável", "Melhorando"]
 
-# opções "estéticas" para o select de Status (somente antes do hífen)
+# opções estéticas p/ Status (remove tudo depois de " - (" ou " (")
+import re
 def status_display(s: str) -> str:
-    return s.split(" - ")[0]  # mantém exatamente o que pediu
+    return re.sub(r"\s*(-\s*)?\([^)]*\)", "", s).strip()
 
 status_display_options = [status_display(s) for s in status_options_full]
-# mapeia de volta para o valor completo usado no encoding
 status_display_to_full = {status_display(s): s for s in status_options_full}
 
-# ---------- FORMULÁRIO (com seções) ----------
-with st.form(key="input_form"):
+# ========= WIDGETS (com keys para permitir reset) =========
 
-    # =========================
-    # 1) Dados de nascimento
-    # =========================
-    st.subheader("Dados de nascimento")
-    age = st.slider("Idade (anos)", min_value=0, max_value=120, value=60, step=1)
-    gender = st.radio("Sexo", options=["Masculino", "Feminino"], horizontal=True)
+# 1) Dados de nascimento
+st.subheader("Dados de nascimento")
+age = st.slider("Idade (anos)", min_value=0, max_value=120, value=60, step=1, key="age")
+gender = st.radio("Sexo", options=["Masculino", "Feminino"], horizontal=True, key="gender")
 
-    st.markdown("---")
+st.markdown("---")
 
-    # =========================
-    # 2) Dados vitais
-    # =========================
-    st.subheader("Dados vitais")
-    sbp = st.slider("Pressão Arterial Sistólica (mmHg)", min_value=70, max_value=240, value=120, step=1)
-    dbp = st.slider("Pressão Arterial Diastólica (mmHg)", min_value=40, max_value=140, value=80, step=1)
-    mbp = round(dbp + (sbp - dbp) / 3.0, 1)  # PAM
-    st.caption(f"PAM calculada automaticamente: **{mbp} mmHg**")
+# 2) Dados vitais
+st.subheader("Dados vitais")
+sbp = st.slider("Pressão Arterial Sistólica (mmHg)", min_value=70, max_value=240, value=120, step=1, key="sbp")
+dbp = st.slider("Pressão Arterial Diastólica (mmHg)", min_value=40, max_value=140, value=80, step=1, key="dbp")
+mbp = round(dbp + (sbp - dbp) / 3.0, 1)  # PAM reativa
+st.caption(f"PAM calculada automaticamente: **{mbp} mmHg**")
 
-    hr = st.slider("Frequência Cardíaca (bpm)", min_value=30, max_value=200, value=90, step=1)
-    saot = st.slider("Saturação de Oxigênio (%)", min_value=50, max_value=100, value=97, step=1)
+hr = st.slider("Frequência Cardíaca (bpm)", min_value=30, max_value=200, value=90, step=1, key="hr")
+saot = st.slider("Saturação de Oxigênio (%)", min_value=50, max_value=100, value=97, step=1, key="saot")
 
-    st.markdown("---")
+st.markdown("---")
 
-    # =========================
-    # 3) Antropometria
-    # =========================
-    st.subheader("Antropometria")
-    missing_bmi = st.checkbox("Ausência de Antropometria")
-    if not missing_bmi:
-        height = st.slider("Altura (cm)", min_value=120, max_value=220, value=170, step=1)
-        weight = st.slider("Peso (kg)", min_value=30, max_value=200, value=70, step=1)
-        bmi = round(weight / ((height / 100) ** 2), 1)
-        st.caption(f"IMC calculado automaticamente: **{bmi} kg/m²**")
-    else:
-        height, weight, bmi = 0.0, 0.0, 0.0
+# 3) Antropometria
+st.subheader("Antropometria")
+missing_bmi = st.checkbox("Ausência de Antropometria", key="missing_bmi")
+if not missing_bmi:
+    height = st.slider("Altura (cm)", min_value=120, max_value=220, value=170, step=1, key="height")
+    weight = st.slider("Peso (kg)", min_value=30, max_value=200, value=70, step=1, key="weight")
+    bmi = round(st.session_state["weight"] / ((st.session_state["height"] / 100) ** 2), 1)
+    st.caption(f"IMC calculado automaticamente: **{bmi} kg/m²**")
+else:
+    height, weight, bmi = 0.0, 0.0, 0.0
 
-    st.markdown("---")
+st.markdown("---")
 
-    # =========================
-    # 4) Classificação de risco
-    # =========================
-    st.subheader("Classificação de risco")
+# 4) Classificação de risco
+st.subheader("Classificação de risco")
+status_display_selected = st.selectbox("Status", options=status_display_options, index=0, key="status_display")
+status_original = status_display_to_full[st.session_state["status_display"]]  # valor "full" p/ pipeline
 
-    # STATUS: mostrar só texto antes do hífen, mas por trás usar o valor completo original
-    status_display_selected = st.selectbox("Status", options=status_display_options)
-    status_original = status_display_to_full[status_display_selected]  # <- valor "full" para o pipeline
+prioridade_color = st.radio("Prioridade", options=["🟢 Verde", "🟡 Amarelo", "🔴 Vermelho"],
+                            index=1, horizontal=True, key="prioridade_color")
+priority_map_display_to_value = {"🟢 Verde": "Verde","🟡 Amarelo": "Amarelo","🔴 Vermelho": "Vermelho"}
+status_priority = priority_map_display_to_value[st.session_state["prioridade_color"]]
 
-    prioridade_color = st.radio(
-        "Prioridade",
-        options=["🟢 Verde", "🟡 Amarelo", "🔴 Vermelho"],
-        index=1, horizontal=True
-    )
-    priority_map_display_to_value = {
-        "🟢 Verde": "Verde",
-        "🟡 Amarelo": "Amarelo",
-        "🔴 Vermelho": "Vermelho",
-    }
-    status_priority = priority_map_display_to_value[prioridade_color]
+tendency = st.radio("Tendência clínica", options=tendency_options, horizontal=True, key="tendency")
 
-    tendency = st.radio("Tendência clínica", options=tendency_options, horizontal=True)
+st.markdown("---")
 
-    st.markdown("---")
+# 5) Doença neoplásica diagnosticada
+st.subheader("Doença neoplásica diagnosticada")
+icd = st.selectbox("CID-10 (apenas neoplasias – códigos iniciados por 'C')",
+                   options=cid_options_c_only, index=0, key="icd")
 
-    # =========================
-    # 5) Doença neoplásica diagnosticada
-    # =========================
-    st.subheader("Doença neoplásica diagnosticada")
-    icd = st.selectbox(
-        "CID-10 (apenas neoplasias – códigos iniciados por 'C')",
-        options=cid_options_c_only,
-        index=0
-    )
+st.markdown("---")
 
-    st.markdown("---")
+# 6) ECOG (condicional)
+st.subheader("Escore Funcional (ECOG)")
+missing_ecog = st.checkbox("Ausência de ECOG", key="missing_ecog")
+if not missing_ecog:
+    ecog = st.radio("ECOG", options=[0, 1, 2, 3, 4], index=0, horizontal=True, key="ecog")
+else:
+    ecog = 0.0
 
-    # =========================
-    # 6) ECOG (deixar condicional)
-    # =========================
-    st.subheader("Escore Funcional (ECOG)")
-    missing_ecog = st.checkbox("Ausência de ECOG")
-    if not missing_ecog:
-        ecog = st.radio("ECOG", options=[0, 1, 2, 3, 4], index=0, horizontal=True)
-    else:
-        ecog = 0.0
+st.markdown("---")
 
-    st.markdown("---")
+# 7) Histórico da doença
+st.subheader("Histórico da doença")
+tdr = st.radio("Internação Recente", options=["Não", "Sim"], horizontal=True, key="tdr")
+ti = st.slider("Tempo entre Última Consulta e PS (dias)", min_value=0, max_value=365, value=7, step=1, key="ti")
 
-    # =========================
-    # 7) Histórico da doença
-    # =========================
-    st.subheader("Histórico da doença")
-    tdr = st.radio("Internação Recente", options=["Não", "Sim"], horizontal=True)
-    ti = st.slider("Tempo entre Última Consulta e PS (dias)", min_value=0, max_value=365, value=7, step=1)
+st.markdown("---")
 
-    st.markdown("---")
-    submit_button = st.form_submit_button(label="Enviar")
+# ========== Botões ==========
+col1, col2 = st.columns(2)
+submit_button = col1.button("Enviar", use_container_width=True)
+reset_button  = col2.button("Nova simulação 🔁", type="secondary", use_container_width=True)
+
+# handler do reset (limpa estado e reinicia)
+if reset_button:
+    keys_to_clear = [
+        "age","gender","sbp","dbp","hr","saot",
+        "missing_bmi","height","weight",
+        "status_display","prioridade_color","tendency",
+        "icd","missing_ecog","ecog","tdr","ti"
+    ]
+    for k in keys_to_clear:
+        if k in st.session_state:
+            del st.session_state[k]
+    try:
+        st.rerun()
+    except Exception:
+        st.experimental_rerun()
 
 # ---------- Exibição resumida ----------
 if submit_button:
     st.success("Dados enviados com sucesso!")
     st.write({
-        "Idade": age,
-        "Sexo": gender,
-        "PAS/PAD/PAM (mmHg)": f"{sbp}/{dbp}/{mbp}",
-        "Frequência Cardíaca (bpm)": hr,
-        "Saturação de Oxigênio (%)": saot,
-        "Ausência de Antropometria": missing_bmi,
-        "Altura (cm)": height,
-        "Peso (kg)": weight,
-        "IMC (auto)": bmi,
-        "Status (exibição)": status_display_selected,
+        "Idade": st.session_state["age"],
+        "Sexo": st.session_state["gender"],
+        "PAS/PAD/PAM (mmHg)": f'{st.session_state["sbp"]}/{st.session_state["dbp"]}/{mbp}',
+        "Frequência Cardíaca (bpm)": st.session_state["hr"],
+        "Saturação de Oxigênio (%)": st.session_state["saot"],
+        "Ausência de Antropometria": st.session_state["missing_bmi"],
+        "Altura (cm)": 0 if st.session_state["missing_bmi"] else st.session_state["height"],
+        "Peso (kg)": 0 if st.session_state["missing_bmi"] else st.session_state["weight"],
+        "IMC (auto)": 0 if st.session_state["missing_bmi"] else bmi,
+        "Status (exibição)": st.session_state["status_display"],
         "Status (interno p/ modelo)": status_original,
         "Prioridade (cor)": status_priority,
-        "Tendência clínica": tendency,
-        "CID-10": icd,
-        "Ausência de ECOG": missing_ecog,
-        "ECOG": ecog if not missing_ecog else None,
-        "Internação Recente": tdr,
-        "Tempo entre Última Consulta e PS (dias)": ti,
+        "Tendência clínica": st.session_state["tendency"],
+        "CID-10": st.session_state["icd"],
+        "Ausência de ECOG": st.session_state["missing_ecog"],
+        "ECOG": None if st.session_state["missing_ecog"] else st.session_state.get("ecog", 0),
+        "Internação Recente": st.session_state["tdr"],
+        "Tempo entre Última Consulta e PS (dias)": st.session_state["ti"],
     })
 
 # ---------- DataFrame de entrada (mesmos nomes do pipeline) ----------
 if submit_button:
     df_input = pd.DataFrame({
-        "age": [age],
-        "gender": [gender],
-        "mbp": [float(mbp)],          # PAM calculada
-        "hr": [float(hr)],
-        "saot": [float(saot)],
-        "height": [float(height)],
-        "weight": [float(weight)],
-        "bmi": [float(bmi)],
-        "icd": [icd],                 # "Cxx - desc" ou "sem_cid - Não se aplica"
-        "status_original": [status_original],   # <- valor completo
-        "status_priority": [status_priority],   # Verde/Amarelo/Vermelho
-        "ti": [float(ti)],
-        "tdr": [tdr],
-        "tendency": [tendency],
-        "ecog": [float(ecog)],
-        "missing_ecog": [bool(missing_ecog)],
-        "missing_bmi": [bool(missing_bmi)]
+        "age": [st.session_state["age"]],
+        "gender": [st.session_state["gender"]],
+        "mbp": [float(mbp)],                              # PAM calculada reativamente
+        "hr": [float(st.session_state["hr"])],
+        "saot": [float(st.session_state["saot"])],
+        "height": [0.0 if st.session_state["missing_bmi"] else float(st.session_state["height"])],
+        "weight": [0.0 if st.session_state["missing_bmi"] else float(st.session_state["weight"])],
+        "bmi": [0.0 if st.session_state["missing_bmi"] else float(bmi)],
+        "icd": [st.session_state["icd"]],                # "Cxx - desc" ou "sem_cid - Não se aplica"
+        "status_original": [status_original],            # valor completo (mapeado)
+        "status_priority": [status_priority],            # Verde/Amarelo/Vermelho
+        "ti": [float(st.session_state["ti"])],
+        "tdr": [st.session_state["tdr"]],
+        "tendency": [st.session_state["tendency"]],
+        "ecog": [0.0 if st.session_state["missing_ecog"] else float(st.session_state.get("ecog", 0.0))],
+        "missing_ecog": [bool(st.session_state["missing_ecog"])],
+        "missing_bmi": [bool(st.session_state["missing_bmi"])],
     })
 
 # ---------- ENCODINGS ----------
@@ -338,7 +331,6 @@ if submit_button:
         encoding_maps = load_encoding_maps()
         encoding_maps_cid = encoding_maps["ICD"]
         df_input["icd_processed"] = df_input["icd"].astype(str).str.split(" - ").str[0].str.lower()
-        # se não começar com "c", trata como sem_cid
         df_input.loc[~df_input["icd_processed"].str.startswith("c"), "icd_processed"] = "sem_cid"
         df_input["icd_encoded"] = df_input["icd_processed"].map(encoding_maps_cid).fillna(0.34162670016104163)
     except Exception as e:
@@ -428,7 +420,7 @@ if submit_button:
     except Exception as e:
         st.write("❌ Erro ao normalizar dados...", str(e))
 
-# ---------- PREDIÇÃO ----------
+# ---------- PREDIÇÃO + DEVOLUTIVA CLÍNICA ----------
 if submit_button:
     try:
         model = get_model()
@@ -438,17 +430,24 @@ if submit_button:
         predictions = model.predict(h2o_df)
         predictions_df = predictions.as_data_frame()
 
-        st.markdown("### Resultado da Predição:")
+        # Probabilidades e classe
+        prob_longa  = float(predictions_df['p0'][0])
+        prob_baixa  = float(predictions_df['p1'][0])
+        classe_pred = int(predictions_df['predict'][0])
 
+        # Limiar de decisão (os mesmos que você usa)
         limiar_classe_0 = 0.4283
         limiar_classe_1 = 0.5717
 
+        st.markdown("## Resultado da Predição:")
+
+        # Gráfico de barras de probabilidade
         fig = go.Figure()
         fig.add_trace(go.Bar(
             x=['Classe 0 - Longa Sobrevida', 'Classe 1 - Baixa Sobrevida'],
-            y=[predictions_df['p0'][0], predictions_df['p1'][0]],
+            y=[prob_longa, prob_baixa],
             marker=dict(color=['green', 'red']),
-            text=[f"{predictions_df['p0'][0]:.2%}", f"{predictions_df['p1'][0]:.2%}"],
+            text=[f"{prob_longa:.2%}", f"{prob_baixa:.2%}"],
             textposition='auto',
         ))
         fig.add_trace(go.Scatter(
@@ -470,12 +469,25 @@ if submit_button:
         )
         st.plotly_chart(fig, use_container_width=True)
 
-        if predictions_df['predict'][0] == 1:
-            st.success("A Classe 1 - Baixa Sobrevida - foi predita com probabilidade maior que o limiar de 57,17%. Portanto, classe predita para o paciente em questão é de Baixa Sobrevida")
+        # Resumo clínico mastigado
+        st.markdown("## Resumo clínico para decisão")
+        if classe_pred == 1:
+            st.error(
+                f"**Classe predita: Baixa Sobrevida (Classe 1)**\n\n"
+                f"- Probabilidade estimada: **{prob_baixa:.1%}** (limiar de alerta: **{limiar_classe_1:.1%}**).\n"
+                f"- Interpretação: o modelo indica **maior risco de baixa sobrevida** nessa admissão.\n"
+                f"- Sinaliza necessidade de **avaliação clínica prioritária**, revisão de metas terapêuticas e plano de cuidado individualizado."
+            )
         else:
-            st.warning("A Classe 0 - Longa Sobrevida - foi predita com probabilidade maior que o limiar de 42,83%. Portanto, classe predita para o paciente em questão é de Longa Sobrevida")
+            st.info(
+                f"**Classe predita: Longa Sobrevida (Classe 0)**\n\n"
+                f"- Probabilidade estimada: **{prob_longa:.1%}** (limiar: **{limiar_classe_0:.1%}**).\n"
+                f"- Interpretação: o modelo indica **menor risco imediato** em comparação ao grupo de baixa sobrevida."
+            )
 
-        st.markdown("### Explicação da Predição:")
+        # SHAP / Contribuições (principais fatores)
+        st.markdown("## Explicação da Predição:")
+
         shap_values = model.predict_contributions(h2o_df)
         shap_df = shap_values.as_data_frame().drop(columns=["BiasTerm"], errors="ignore")
         shap_df_melted = shap_df.T.reset_index()
@@ -490,14 +502,33 @@ if submit_button:
             "Age": "Idade","Status_priority": "Prioridade Status","ICD": "CID","Status_Original": "Status Original"
         }
         shap_df_melted["Feature"] = shap_df_melted["Feature"].replace(rename_dict)
-        shap_df_melted = shap_df_melted.reindex(shap_df_melted["Importance"].abs().sort_values(ascending=True).index)
 
+        # Top 5 fatores por |SHAP|
+        top5 = (shap_df_melted.assign(abs_imp=lambda d: d["Importance"].abs())
+                .sort_values("abs_imp", ascending=False)
+                .head(5)[["Feature", "Importance"]])
+
+        # Texto para clínicos: positivo/negativo
+        bullets = []
+        for _, row in top5.iterrows():
+            direcao = "↑ risco" if row["Importance"] > 0 else "↓ risco"
+            bullets.append(f"- **{row['Feature']}** — impacto (SHAP): **{row['Importance']:.3f}** → *{direcao}*")
+
+        st.markdown("**Principais fatores que influenciaram esta predição:**")
+        st.markdown("\n".join(bullets))
+        st.caption(
+            "Observação: valores SHAP indicam contribuição relativa de cada variável para este caso. "
+            "Sinal positivo tende a empurrar para a classe predita; sinal negativo, no sentido oposto."
+        )
+
+        # Gráfico SHAP (como antes)
+        shap_df_plot = shap_df_melted.sort_values("Importance", key=lambda s: s.abs(), ascending=True)
         fig2 = go.Figure()
         fig2.add_trace(go.Bar(
-            y=shap_df_melted["Feature"],
-            x=shap_df_melted["Importance"],
+            y=shap_df_plot["Feature"],
+            x=shap_df_plot["Importance"],
             orientation='h',
-            marker=dict(color=shap_df_melted["Importance"], colorscale="RdBu"),
+            marker=dict(color=shap_df_plot["Importance"], colorscale="RdBu"),
         ))
         fig2.update_layout(
             title="Explicação da Predição (SHAP) - Paciente em avaliação",
@@ -506,6 +537,34 @@ if submit_button:
             margin=dict(l=140, r=20, t=60, b=40),
         )
         st.plotly_chart(fig2, use_container_width=True)
+
+        # Dados usados (para auditoria clínica rápida)
+        st.markdown("## Dados utilizados nesta avaliação")
+        colA, colB, colC = st.columns(3)
+        with colA:
+            st.write(f"**Idade:** {st.session_state['age']} anos")
+            st.write(f"**Sexo:** {st.session_state['gender']}")
+            st.write(f"**PAS/PAD/PAM:** {st.session_state['sbp']}/{st.session_state['dbp']}/{mbp} mmHg")
+            st.write(f"**FC:** {st.session_state['hr']} bpm")
+        with colB:
+            st.write(f"**SatO₂:** {st.session_state['saot']}%")
+            st.write(f"**Altura/Peso:** "
+                     f"{'-' if st.session_state['missing_bmi'] else f'{st.session_state['height']} cm / {st.session_state['weight']} kg'}")
+            st.write(f"**IMC:** {'-' if st.session_state['missing_bmi'] else f'{bmi} kg/m²'}")
+            st.write(f"**ECOG:** {'ausente' if st.session_state['missing_ecog'] else st.session_state.get('ecog', 0)}")
+        with colC:
+            st.write(f"**Status:** {st.session_state['status_display']}")
+            st.write(f"**Prioridade:** {status_priority}")
+            st.write(f"**Tendência:** {st.session_state['tendency']}")
+            st.write(f"**CID:** {st.session_state['icd']}")
+            st.write(f"**Internação recente:** {st.session_state['tdr']}")
+            st.write(f"**Tempo desde última consulta:** {st.session_state['ti']} dias")
+
+        # Lembrete ético
+        st.caption(
+            "Este modelo é **apoio à decisão clínica** e **não substitui** julgamento médico. "
+            "Interprete sempre à luz do quadro clínico, preferências do paciente/família e diretrizes vigentes."
+        )
 
     except Exception as e:
         st.write("❌ Erro ao realizar predição...", str(e))
