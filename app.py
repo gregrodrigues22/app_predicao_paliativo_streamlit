@@ -101,425 +101,368 @@ with st.sidebar:
         )
 
 # --------------------------------------------------------------
-# CONTEÚDO PRINCIPAL DO APP (SEU CÓDIGO)
+# CONTEÚDO PRINCIPAL DO APP (AJUSTADO + MODELO EM CACHE)
 # --------------------------------------------------------------
 
 st.title("Predição no PoC 📈🎯")
 st.write("Preencha os campos abaixo com os valores correspondentes às variáveis utilizadas no modelo preditivo.")
 
-#Criando listas
-cid = pd.read_csv("cids.csv")
-cid_list = cid['Codigo'].tolist()
+# ---------- carregadores em cache ----------
+@st.cache_data(show_spinner=False)
+def load_cids():
+    df = pd.read_csv("cids.csv")
+    cols_lower = {c.lower(): c for c in df.columns}
+    codigo_col = cols_lower.get("codigo")
+    desc_col   = cols_lower.get("descricao")
+    if codigo_col and desc_col:
+        options = (df[codigo_col].astype(str) + " - " + df[desc_col].astype(str)).tolist()
+    elif codigo_col:
+        options = df[codigo_col].astype(str).tolist()
+    else:
+        options = df.get("Codigo", pd.Series(dtype=str)).astype(str).tolist()
+    return df, options
 
-status_options = ["Nenhuma das anteriores(Verde)", "Outras situações que requerem atend. com urgência intermediária - (Amarelo)", 
-                  "Suspeita/Confirmação de NF - (Amarelo)", "Dor Intensa (> 7 em 10) - (Amarelo)", "Sala de Emergência - (Vermelho)", 
-                  "Suspeita de SCM - (Amarelo)",
-                  "Sepse - (Amarelo)","Dessaturação - (Amarelo)", "Hemorragia com potencial risco de vida - (Amarelo)", 
-                  "Sinais de choque - (Vermelho)", 
-                  "Fase Final de Vida - (Amarelo)", "Outras situações que requerem atend. Prioritário - (Vermelho)", "IRA - (Amarelo)", 
-                  "Desconforto Respiratório - (Vermelho)", "Distúrbio Hidroeletrolítico com risco de instabilidade - (Amarelo)",
-                  "Rebaixamento do Nível de Consciência - (Vermelho)", "Suspeita de SCA - (Vermelho)", "Sangramento Ativo Ameaçador à Vida - (Vermelho)",
-                  "Suspeita de Síndrome de Lise Tumoral - (Vermelho)"]
+@st.cache_data(show_spinner=False)
+def load_encoding_maps():
+    return joblib.load("encoding_maps.joblib")
 
-priority_options = ["Verde", "Amarelo", "Vermelho"]
+@st.cache_data(show_spinner=False)
+def load_scaler():
+    return joblib.load("scaler.joblib")
 
+# ---------- MODELO H2O EM CACHE ----------
+@st.cache_resource(show_spinner=True)
+def get_model():
+    """
+    Baixa o MOJO (se necessário), inicializa o H2O e carrega o modelo.
+    Executa apenas uma vez por sessão graças ao cache_resource.
+    """
+    file_id = "1IEGIuHt1l8xwR_Jl5J_fuKf0h5Fkdwx2"  # ajuste se mudar
+    url = f"https://drive.google.com/uc?id={file_id}"
+    model_filename = "modelo_em_mojo.zip"
+
+    # Baixa apenas se não existir localmente
+    if not os.path.exists(model_filename):
+        gdown.download(url, model_filename, quiet=True)
+
+    # Inicia H2O (chamado uma vez por sessão)
+    h2o.init()
+
+    # Importa o MOJO
+    model = h2o.import_mojo(model_filename)
+    return model
+
+cid_df, cid_options = load_cids()
+
+status_options = [
+    "Nenhuma das anteriores(Verde)",
+    "Outras situações que requerem atend. com urgência intermediária - (Amarelo)",
+    "Suspeita/Confirmação de NF - (Amarelo)",
+    "Dor Intensa (> 7 em 10) - (Amarelo)",
+    "Sala de Emergência - (Vermelho)",
+    "Suspeita de SCM - (Amarelo)",
+    "Sepse - (Amarelo)",
+    "Dessaturação - (Amarelo)",
+    "Hemorragia com potencial risco de vida - (Amarelo)",
+    "Sinais de choque - (Vermelho)",
+    "Fase Final de Vida - (Amarelo)",
+    "Outras situações que requerem atend. Prioritário - (Vermelho)",
+    "IRA - (Amarelo)",
+    "Desconforto Respiratório - (Vermelho)",
+    "Distúrbio Hidroeletrolítico com risco de instabilidade - (Amarelo)",
+    "Rebaixamento do Nível de Consciência - (Vermelho)",
+    "Suspeita de SCA - (Vermelho)",
+    "Sangramento Ativo Ameaçador à Vida - (Vermelho)",
+    "Suspeita de Síndrome de Lise Tumoral - (Vermelho)"
+]
 tendency_options = ["Estável", "Instável", "Melhorando"]
- 
-# Criando o formulário
+
+# ---------- FORMULÁRIO (reordenado + componentes pedidos) ----------
 with st.form(key="input_form"):
 
-    # Seção 1: Informações Pessoais
-    st.subheader("Informações Pessoais")
-    age = st.number_input("Idade", min_value=0, max_value=120, step=1)
-    gender = st.selectbox("Sexo", options=["Masculino", "Feminino"])
+    # 1) Idade (slider)
+    age = st.slider("Idade (anos)", min_value=0, max_value=120, value=60, step=1)
 
-    st.markdown("---")  # Linha de separação
+    # 2) Sexo (radio)
+    gender = st.radio("Sexo", options=["Masculino", "Feminino"], horizontal=True)
 
-    # Seção 2: Sinais Vitais
-    st.subheader("Sinais Vitais")
-    mbp = st.number_input("Pressão Arterial", min_value=0.0, step=0.1)
-    hr = st.number_input("Frequência Cardíaca", min_value=0.0, step=0.1)
-    saot = st.number_input("Saturação de Oxigênio", min_value=0.0, step=0.1)
+    # 3) Pressão Arterial Média (slider)
+    mbp = st.slider("Pressão Arterial Média (mmHg)", min_value=40, max_value=140, value=90, step=1)
 
-    st.markdown("---")  # Linha de separação
+    # 4) Frequência Cardíaca (slider)
+    hr = st.slider("Frequência Cardíaca (bpm)", min_value=30, max_value=200, value=90, step=1)
 
-    # Seção 3: Antropometria
+    # 5) Saturação de Oxigênio (slider)
+    saot = st.slider("Saturação de Oxigênio (%)", min_value=50, max_value=100, value=97, step=1)
+
+    st.markdown("---")
+
+    # 6) Antropometria (condicional)
     st.subheader("Antropometria")
     missing_bmi = st.checkbox("Ausência de Antropometria")
-    height = st.number_input("Altura em centímetros", min_value=0.0, step=0.1)
-    weight = st.number_input("Peso em kilogramas", min_value=0.0, step=0.1)
-    bmi = st.number_input("Índice de Massa Corporal", min_value=0.0, step=0.1)
+    if not missing_bmi:
+        height = st.slider("Altura (cm)", min_value=120, max_value=220, value=170, step=1)
+        weight = st.slider("Peso (kg)", min_value=30, max_value=200, value=70, step=1)
+        bmi = round(weight / ((height / 100) ** 2), 1)
+        st.caption(f"IMC calculado automaticamente: **{bmi} kg/m²**")
+    else:
+        height, weight, bmi = 0.0, 0.0, 0.0
 
-    st.markdown("---")  # Linha de separação
+    st.markdown("---")
 
-    # Seção 4: Diagnóstico e Status
-    st.subheader("Diagnóstico e Status")
-    icd = st.selectbox("CID", options=cid_list)
-    status_original = st.selectbox("Status Original", options=status_options)
-    status_priority = st.selectbox("Prioridade", options=priority_options)
+    # 7) Status Original (select)
+    status_original = st.selectbox("Status Original (classificação clínica)", options=status_options)
 
-    st.markdown("---")  # Linha de separação
+    # 8) Prioridade (cor → valor)
+    prioridade_color = st.radio(
+        "Prioridade (cor)", options=["🟢 Verde", "🟡 Amarelo", "🔴 Vermelho"],
+        index=1, horizontal=True
+    )
+    priority_map_display_to_value = {
+        "🟢 Verde": "Verde",
+        "🟡 Amarelo": "Amarelo",
+        "🔴 Vermelho": "Vermelho",
+    }
+    status_priority = priority_map_display_to_value[prioridade_color]
 
-    # Seção 5: Histórico Clínico
-    st.subheader("Histórico Clínico")
-    ti = st.number_input("Tempo entre Última Consulta e PS em dias", min_value=0.0, step=0.1)
-    tdr = st.selectbox("Internação Recente", options=["Não", "Sim"])
-    tendency = st.selectbox("Tendência", options=tendency_options)
+    # 9) Tendência (radio)
+    tendency = st.radio("Tendência clínica", options=tendency_options, horizontal=True)
 
-    st.markdown("---")  # Linha de separação
+    # 10) CID (melhor nomenclatura)
+    icd = st.selectbox("CID-10 (Código – Descrição)", options=cid_options)
 
-    # Seção 6: Escore Funcional
-    st.subheader("Escore Funcional")
+    # 11) ECOG (condicional; radio 0–4)
+    st.subheader("Escore Funcional (ECOG)")
     missing_ecog = st.checkbox("Ausência de ECOG")
-    ecog = st.number_input("ECOG", min_value=0.0, max_value=4.0, step=0.1)
+    if not missing_ecog:
+        ecog = st.radio("ECOG", options=[0, 1, 2, 3, 4], index=0, horizontal=True)
+    else:
+        ecog = 0.0
 
-    st.markdown("---")  # Linha de separação
+    # 12) Tempo entre última consulta e PS (slider dias)
+    ti = st.slider("Tempo entre Última Consulta e PS (dias)", min_value=0, max_value=365, value=7, step=1)
 
-    # Botão de envio
+    # 13) Internação Recente (radio)
+    tdr = st.radio("Internação Recente", options=["Não", "Sim"], horizontal=True)
+
+    st.markdown("---")
     submit_button = st.form_submit_button(label="Enviar")
 
-# Exibir os dados submetidos
+# ---------- Exibição e DF de entrada ----------
 if submit_button:
     st.success("Dados enviados com sucesso!")
-    st.write("Valores inseridos:")
     st.write({
         "Idade": age,
         "Sexo": gender,
-        "Pressão Arterial": mbp,
-        "Frequência Cardíaca": hr,
-        "Saturação de Oxigênio": saot,
-        "Altura": height,
-        "Peso Estimado": weight,
-        "Índice de Massa Corporal": bmi,
+        "Pressão Arterial (MBP)": mbp,
+        "Frequência Cardíaca (HR)": hr,
+        "Saturação de Oxigênio (%)": saot,
         "Ausência de Antropometria": missing_bmi,
-        "CID": icd,
+        "Altura (cm)": height,
+        "Peso (kg)": weight,
+        "IMC (auto)": bmi,
         "Status Original": status_original,
-        "Prioridade do Status": status_priority,
-        "Tempo entre Última Consulta e PS": ti,
-        "Internação Recente": tdr,
+        "Prioridade (cor)": status_priority,
         "Tendência": tendency,
-        "ECOG": ecog,
+        "CID-10": icd,
         "Ausência de ECOG": missing_ecog,
+        "ECOG": ecog if not missing_ecog else None,
+        "Tempo entre Última Consulta e PS (dias)": ti,
+        "Internação Recente": tdr,
     })
 
 if submit_button:
-    # Criar DataFrame a partir dos inputs do usuário
+    # ⚠️ icd precisa ser lista [icd], não string isolada
     df_input = pd.DataFrame({
         "age": [age],
-        "gender": [gender],  
-        "mbp": [mbp],
-        "hr": [hr],
-        "saot": [saot],
-        "height": [height],
-        "weight": [weight],
-        "bmi": [bmi],
-        "icd": icd,  
-        "status_original": [status_original],  
-        "status_priority": [status_priority],  
-        "ti": [ti],  
-        "tdr": [tdr],  
-        "tendency": [tendency],  
-        "ecog": [ecog],  
-        "missing_ecog": [missing_ecog],
-        "missing_bmi": [missing_bmi]
+        "gender": [gender],
+        "mbp": [float(mbp)],
+        "hr": [float(hr)],
+        "saot": [float(saot)],
+        "height": [float(height)],
+        "weight": [float(weight)],
+        "bmi": [float(bmi)],
+        "icd": [icd],
+        "status_original": [status_original],
+        "status_priority": [status_priority],
+        "ti": [float(ti)],
+        "tdr": [tdr],
+        "tendency": [tendency],
+        "ecog": [float(ecog)],
+        "missing_ecog": [bool(missing_ecog)],
+        "missing_bmi": [bool(missing_bmi)]
     })
 
 if submit_button:
-
-    #Print:
-    #st.subheader("📊 Dados inseridos pelo usuário")
-    #st.dataframe(df_input)
-
-    #Encoding CID
+    # ---------- ENCODING ----------
     try:
-        encoding_maps = joblib.load("encoding_maps.joblib")
+        encoding_maps = load_encoding_maps()
         encoding_maps_cid = encoding_maps["ICD"]
-        #st.write("✅ Preparando input do Dado 'CID' para predição...")
-        df_input["icd_processed"] = df_input["icd"].str.split(" - ").str[0].str.lower()
+        df_input["icd_processed"] = df_input["icd"].astype(str).str.split(" - ").str[0].str.lower()
         df_input["icd_encoded"] = df_input["icd_processed"].map(encoding_maps_cid).fillna(0.34162670016104163)
-        #st.write(df_input["icd_encoded"])
-    except:
-        st.write("❌ Erro ao preparar Dado 'CID' para predição...")
+    except Exception as e:
+        st.write("❌ Erro ao preparar Dado 'CID' para predição...", str(e))
 
-    #Encoding Status_Original
     try:
         encoding_maps_status = encoding_maps["Status_Original"]
-        #st.write("✅ Preparando input do Dado 'Status' para predição...")
         df_input["status_original_encoded"] = df_input["status_original"].map(encoding_maps_status).fillna(0.31209494163715695)
-        #st.write(df_input["status_original_encoded"])
-    except:
-        st.write("❌ Erro ao preparar Dado 'Status' para predição...")
-
-    #Encoding Status_Ordinal
-    try:
-        priority_encoding = {"Verde": 1,"Amarelo": 2,"Vermelho": 3}
-        #st.write("✅ Preparando input do Dado 'Prioridade' para predição...")
-        df_input["status_priority_encoded"] = df_input["status_priority"].map(priority_encoding).fillna(1)
-        #st.write(df_input["status_priority_encoded"])
-    except:
-        st.write("❌ Erro ao preparar Dado 'Prioridade' para predição...")      
-
-    #Encoding Sexo
-    try:
-        gender_encoding = {"Feminino": 1,"Masculino": 0}
-        #st.write("✅ Preparando input do Dado 'Sexo' para predição...")
-        df_input["gender_encoded"] = df_input["gender"].map(gender_encoding).fillna(1)
-        #st.write(df_input["gender_encoded"])
-    except:
-        st.write("❌ Erro ao preparar Dado 'Sexo' para predição...")    
-
-    #Encoding TDR
-    try:
-        tdr_encoding = {"Não": 0,"Sim": 1}
-        #st.write("✅ Preparando input do Dado 'Reinternação' para predição...")
-        df_input["tdr_encoded"] = df_input["tdr"].map(tdr_encoding).fillna(0)
-        #st.write(df_input["tdr_encoded"])
-    except:
-        st.write("❌ Erro ao preparar Dado 'Reinternação' para predição...")  
-
-    #Encoding Tendência
-    try:
-        tendency_encoding = {"Estável": 1,"Melhorando": 2, "Instável": 3}
-        #st.write("✅ Preparando input do Dado 'Tendência' para predição...")
-        df_input["tendency_encoded"] = df_input["tendency"].map(tendency_encoding).fillna(1)
-        #st.write(df_input["tendency_encoded"])
-    except:
-        st.write("❌ Erro ao preparar Dado 'Tendência' para predição...")  
-
-    #Encoding missing_ecog
-    try:
-        missing_ecog_encoding = {"False": 0,"True": 1}
-        #st.write("✅ Preparando input do Dado 'Ecog' para predição...")
-        df_input["missing_ecog_encoded"] = df_input["missing_ecog"].astype(str).map(missing_ecog_encoding).fillna(1)
-        #st.write(df_input["missing_ecog_encoded"])
-    except:
-        st.write("❌ Erro ao preparar Dado 'Ecog' para predição...")
-
-    #Encoding missing_bmi
-    try:
-        missing_bmi_encoding = {"False": 0,"True": 1}
-        #st.write("✅ Preparando input do Dado 'IMC' para predição...")
-        df_input["missing_bmi_encoded"] = df_input["missing_bmi"].astype(str).map(missing_bmi_encoding).fillna(1)
-        #    st.write(df_input["missing_bmi_encoded"])
-    except:
-        st.write("❌ Erro ao preparar Dado 'IMC' para predição...")
-
-    #Encoding ti e os 
-    try:
-        df_input["ti_segundos"] = df_input["ti"] * 86400
-        df_input["saot_fracao"] = df_input["saot"] /100
-        #st.write("✅ Preparando input do Dado 'Tempo entre Última Consulta e PS' para predição...")
-    except:
-        st.write("❌ Erro ao preparar Dado 'Tempo entre Última Consulta e PS' para predição...")
-
-    #Scaler
-    try:
-        scaler = joblib.load("scaler.joblib")
-        print(type(scaler))
-        #st.write("✅ Preparando normalização dos dados...")
     except Exception as e:
-        print("❌ Erro ao preparar normalização dados...", str(e))
+        st.write("❌ Erro ao preparar Dado 'Status' para predição...", str(e))
 
-    #Mapeamento para Scaler
+    try:
+        priority_encoding = {"Verde": 1, "Amarelo": 2, "Vermelho": 3}
+        df_input["status_priority_encoded"] = df_input["status_priority"].map(priority_encoding).fillna(1)
+    except Exception as e:
+        st.write("❌ Erro ao preparar Dado 'Prioridade' para predição...", str(e))
+
+    try:
+        gender_encoding = {"Feminino": 1, "Masculino": 0}
+        df_input["gender_encoded"] = df_input["gender"].map(gender_encoding).fillna(1)
+    except Exception as e:
+        st.write("❌ Erro ao preparar Dado 'Sexo' para predição...", str(e))
+
+    try:
+        tdr_encoding = {"Não": 0, "Sim": 1}
+        df_input["tdr_encoded"] = df_input["tdr"].map(tdr_encoding).fillna(0)
+    except Exception as e:
+        st.write("❌ Erro ao preparar Dado 'Reinternação' para predição...", str(e))
+
+    try:
+        tendency_encoding = {"Estável": 1, "Melhorando": 2, "Instável": 3}
+        df_input["tendency_encoded"] = df_input["tendency"].map(tendency_encoding).fillna(1)
+    except Exception as e:
+        st.write("❌ Erro ao preparar Dado 'Tendência' para predição...", str(e))
+
+    try:
+        missing_ecog_encoding = {"False": 0, "True": 1}
+        df_input["missing_ecog_encoded"] = df_input["missing_ecog"].astype(str).map(missing_ecog_encoding).fillna(1)
+    except Exception as e:
+        st.write("❌ Erro ao preparar Dado 'Ecog' para predição...", str(e))
+
+    try:
+        missing_bmi_encoding = {"False": 0, "True": 1}
+        df_input["missing_bmi_encoded"] = df_input["missing_bmi"].astype(str).map(missing_bmi_encoding).fillna(1)
+    except Exception as e:
+        st.write("❌ Erro ao preparar Dado 'IMC' para predição...", str(e))
+
+    try:
+        df_input["ti_segundos"] = df_input["ti"] * 86400.0
+        df_input["saot_fracao"] = df_input["saot"] / 100.0
+    except Exception as e:
+        st.write("❌ Erro ao preparar Dado 'Tempo entre Última Consulta e PS' para predição...", str(e))
+
+    # ---------- SCALER ----------
+    try:
+        scaler = load_scaler()
+    except Exception as e:
+        st.write("❌ Erro ao preparar normalização dados...", str(e))
+
     try:
         selected_columns = [
-        'bmi', 'hr', 'mbp', 'saot_fracao', 'weight',
-        'height', 'ti_segundos', 'ecog', 'missing_bmi_encoded',
-        'missing_ecog_encoded', 'gender_encoded', 'tdr_encoded', 'tendency_encoded',
-        'age', 'status_priority_encoded', 'icd_encoded', 'status_original_encoded']
+            'bmi','hr','mbp','saot_fracao','weight','height','ti_segundos','ecog',
+            'missing_bmi_encoded','missing_ecog_encoded','gender_encoded','tdr_encoded','tendency_encoded',
+            'age','status_priority_encoded','icd_encoded','status_original_encoded'
+        ]
         df_input = df_input.filter(items=selected_columns)
         column_scale_mapping = {
-        "bmi": "BMI_knn",
-        "hr": "HR_knn",
-        "mbp": "MBP_knn",
-        "saot_fracao": "OS_knn",
-        "weight": "Weight_knn",
-        "height": "Height_knn",
-        "ti_segundos": "TI_median",
-        "ecog": "ECOG_median",
-        "missing_bmi_encoded": "missing_bmi",
-        "missing_ecog_encoded": "missing_ecog",
-        "gender_encoded": "Gender_binary",
-        "tdr_encoded": "TDR_binary",
-        "tendency_encoded": "Tendency_ordinal",
-        "age": "Age",
-        "status_priority_encoded": "Status_priority",
-        "icd_encoded": "ICD",
-        "status_original_encoded": "Status_Original"
+            "bmi": "BMI_knn", "hr": "HR_knn", "mbp": "MBP_knn", "saot_fracao": "OS_knn",
+            "weight": "Weight_knn", "height": "Height_knn", "ti_segundos": "TI_median",
+            "ecog": "ECOG_median", "missing_bmi_encoded": "missing_bmi", "missing_ecog_encoded": "missing_ecog",
+            "gender_encoded": "Gender_binary", "tdr_encoded": "TDR_binary", "tendency_encoded": "Tendency_ordinal",
+            "age": "Age", "status_priority_encoded": "Status_priority", "icd_encoded": "ICD",
+            "status_original_encoded": "Status_Original"
         }
         df_input = df_input.rename(columns=column_scale_mapping)
-        #st.write("✅ Preparando nomenclatura dos dados...")
-    except Exception as e:
-        print("❌ Erro ao preparar nomenclatura das variáveis dados...", str(e))
 
-    #Aplicando scaler
-    try:
-        df_input_scaled = df_input.copy()
-        expected_columns = ['BMI_knn', 'HR_knn', 'MBP_knn', 'OS_knn', 'Weight_knn','Height_knn', 
-                            'TI_median', 'ECOG_median', 'missing_bmi','missing_ecog', 'Gender_binary', 
-                            'TDR_binary', 'Tendency_ordinal','Age', 'Status_priority', 'ICD', 'Status_Original']
-        df_input_scaled.columns = df_input_scaled.columns.astype(str)
-        df_input_scaled = df_input_scaled.astype(float)
-        df_input_scaled.columns = df_input_scaled.columns.str.strip()
-        #st.write("Colunas no df_input_scaled:", df_input_scaled.columns.tolist())
-        #st.write("Colunas esperadas pelo scaler:", expected_columns)
-        #st.write(df_input_scaled)
-        #print("No DataFrame mas não no Scaler:", set(df_input_scaled.columns) - set(expected_columns))
-        #print("No Scaler mas não no DataFrame:", set(expected_columns) - set(df_input_scaled.columns))
-        #st.write(df_input_scaled.dtypes)
+        expected_columns = [
+            'BMI_knn','HR_knn','MBP_knn','OS_knn','Weight_knn','Height_knn',
+            'TI_median','ECOG_median','missing_bmi','missing_ecog','Gender_binary',
+            'TDR_binary','Tendency_ordinal','Age','Status_priority','ICD','Status_Original'
+        ]
+        df_input_scaled = df_input.copy().astype(float)
+        df_input_scaled = df_input_scaled[expected_columns]
         df_input_scaled[expected_columns] = scaler.transform(df_input_scaled[expected_columns])
-        #st.write(df_input_scaled)
-        #st.write("✅ Realizando normalização dos dados...")
     except Exception as e:
         st.write("❌ Erro ao normalizar dados...", str(e))
 
-    #Baixando modelo
+    # ---------- PREDIÇÃO COM MODELO EM CACHE ----------
     try:
+        model = get_model()  # <- carrega do cache
+        st.session_state['model'] = model  # opcional
+        st.success("✅ Modelo carregado (cache).")
 
-        # URL do modelo no Google Drive
-        file_id = "1IEGIuHt1l8xwR_Jl5J_fuKf0h5Fkdwx2"  # Substitua pelo ID do seu arquivo
-        url = f"https://drive.google.com/uc?id={file_id}"
-
-        # Nome do arquivo para salvar localmente
-        model_filename = "modelo_em_mojo.zip"
-
-        # Baixar o modelo
-        @st.cache_resource
-        def download_model():
-            gdown.download(url, model_filename, quiet=False)
-            return model_filename
-        
-        # Baixar o modelo
-        download_model()
-
-        # Iniciar o H2O e carregar o modelo
-        h2o.init()
-
-        # Carregar o modelo H2O
-        model = h2o.import_mojo(model_filename)
-        st.session_state['model'] = model
-        
-        st.write("✅ Modelo carregado com sucesso!")
-    except Exception as e:
-        st.write("❌ Erro ao carregar modelo...", str(e))
-
-    #Mostrando predição
-    
-    try:
         h2o_df = h2o.H2OFrame(df_input_scaled)
         predictions = model.predict(h2o_df)
         predictions_df = predictions.as_data_frame()
-        #st.write(predictions_df)
-        #st.write("✅ Predição realizada com sucesso!")
-        
+
         st.markdown("### Resultado da Predição:")
-        # Definir os limiares para cada classe
-        limiar_classe_0 = 0.4283  # Ajuste conforme necessário
-        limiar_classe_1 = 0.5717  # Ajuste conforme necessário
-        
+
+        limiar_classe_0 = 0.4283
+        limiar_classe_1 = 0.5717
+
         fig = go.Figure()
-        
-        # Adicionar as barras para as probabilidades das classes
         fig.add_trace(go.Bar(
             x=['Classe 0 - Longa Sobrevida', 'Classe 1 - Baixa Sobrevida'],
-            y=[predictions_df['p0'][0], predictions_df['p1'][0]],  # Probabilidades
-            marker=dict(color=['green', 'red']),  # Cores das classes
-            text=[f"{predictions_df['p0'][0]:.2%}", f"{predictions_df['p1'][0]:.2%}"],  # Adicionar percentuais
+            y=[predictions_df['p0'][0], predictions_df['p1'][0]],
+            marker=dict(color=['green', 'red']),
+            text=[f"{predictions_df['p0'][0]:.2%}", f"{predictions_df['p1'][0]:.2%}"],
             textposition='auto',
         ))
-        
-        # Adicionar linha do limiar **para a Classe 0** (linha horizontal completa)
         fig.add_trace(go.Scatter(
-            x=['Classe 0 - Longa Sobrevida', 'Classe 1 - Baixa Sobrevida'],  # Agora atravessa todo o gráfico
-            y=[limiar_classe_0, limiar_classe_0],  # Linha no valor do limiar da classe 0
-            mode="lines",
-            line=dict(color="blue", dash="dash"),
+            x=['Classe 0 - Longa Sobrevida', 'Classe 1 - Baixa Sobrevida'],
+            y=[limiar_classe_0, limiar_classe_0],
+            mode="lines", line=dict(color="blue", dash="dash"),
             name=f"Limiar Classe 0 ({limiar_classe_0:.2%})"
         ))
-        
-        # Adicionar linha do limiar **para a Classe 1** (linha horizontal completa)
         fig.add_trace(go.Scatter(
-            x=['Classe 0 - Longa Sobrevida', 'Classe 1 - Baixa Sobrevida'],  # Agora atravessa todo o gráfico
-            y=[limiar_classe_1, limiar_classe_1],  # Linha no valor do limiar da classe 1
-            mode="lines",
-            line=dict(color="purple", dash="dash"),
+            x=['Classe 0 - Longa Sobrevida', 'Classe 1 - Baixa Sobrevida'],
+            y=[limiar_classe_1, limiar_classe_1],
+            mode="lines", line=dict(color="purple", dash="dash"),
             name=f"Limiar Classe 1 ({limiar_classe_1:.2%})"
         ))
-        
-        # Ajustar layout
         fig.update_layout(
             title="Distribuição das Probabilidades das Classes",
-            xaxis_title="Classes",
-            yaxis_title="Probabilidade",
-            yaxis=dict(range=[0, 1]),  # Garante que o eixo Y vai de 0 a 1
-            showlegend=True  # Exibe as legendas
+            xaxis_title="Classes", yaxis_title="Probabilidade",
+            yaxis=dict(range=[0, 1]), showlegend=True
         )
-
-        # Exibir no Streamlit
-        st.plotly_chart(fig)
+        st.plotly_chart(fig, use_container_width=True)
 
         if predictions_df['predict'][0] == 1:
-            st.success("A Classe 1 - Baixa Sobrevida - foi predita com probabilidade maior que o limiar de 57,17%. Portanto, classe predita para o paciente em questão é de Baixa Sobrevida") 
+            st.success("A Classe 1 - Baixa Sobrevida - foi predita com probabilidade maior que o limiar de 57,17%. Portanto, classe predita para o paciente em questão é de Baixa Sobrevida")
         else:
             st.warning("A Classe 0 - Longa Sobrevida - foi predita com probabilidade maior que o limiar de 42,83%. Portanto, classe predita para o paciente em questão é de Longa Sobrevida")
 
         st.markdown("### Explicação da Predição:")
-        
-        # Gerar a explicação SHAP apenas para essa instância
         shap_values = model.predict_contributions(h2o_df)
-        shap_df = shap_values.as_data_frame()
-        shap_df = shap_df.drop(columns=["BiasTerm"], errors="ignore")
-        shap_df_melted = shap_df.T.reset_index()  # Transpõe e reseta o índice
-        shap_df_melted.columns = ["Feature", "Importance"]  # Renomeia colunas
-        
-        rename_dict = {
-            "BMI_knn": "IMC",
-            "HR_knn": "Frequência Cardíaca",
-            "MBP_knn": "Pressão Média",
-            "OS_knn": "Saturação de Oxigênio",
-            "Weight_knn": "Peso",
-            "Height_knn": "Altura",
-            "TI_median": "Tempo entre Consulta e PS",
-            "ECOG_median": "ECOG",
-            "missing_bmi": "IMC ausente",
-            "missing_ecog": "ECOG ausente",
-            "Gender_binary": "Sexo",
-            "TDR_binary": "Internação Recente",
-            "Tendency_ordinal": "Tendência",
-            "Age": "Idade",
-            "Status_priority": "Prioridade Status",
-            "ICD": "CID",
-            "Status_Original": "Status Original"
-        }
-        
-        # Aplicar os novos nomes das features
-        shap_df_melted["Feature"] = shap_df_melted["Feature"].replace(rename_dict)
+        shap_df = shap_values.as_data_frame().drop(columns=["BiasTerm"], errors="ignore")
+        shap_df_melted = shap_df.T.reset_index()
+        shap_df_melted.columns = ["Feature", "Importance"]
 
-        # Ordenar pela importância absoluta (valores mais influentes primeiro)
+        rename_dict = {
+            "BMI_knn": "IMC", "HR_knn": "Frequência Cardíaca", "MBP_knn": "Pressão Média",
+            "OS_knn": "Saturação de Oxigênio", "Weight_knn": "Peso", "Height_knn": "Altura",
+            "TI_median": "Tempo entre Consulta e PS", "ECOG_median": "ECOG",
+            "missing_bmi": "IMC ausente", "missing_ecog": "ECOG ausente",
+            "Gender_binary": "Sexo", "TDR_binary": "Internação Recente", "Tendency_ordinal": "Tendência",
+            "Age": "Idade", "Status_priority": "Prioridade Status", "ICD": "CID", "Status_Original": "Status Original"
+        }
+        shap_df_melted["Feature"] = shap_df_melted["Feature"].replace(rename_dict)
         shap_df_melted = shap_df_melted.reindex(shap_df_melted["Importance"].abs().sort_values(ascending=True).index)
-        
-        # Adicionar barras ao gráfico
-        fig = go.Figure()
-        fig.add_trace(go.Bar(
-            y=shap_df_melted["Feature"],  # Eixo Y com os nomes das features
-            x=shap_df_melted["Importance"],  # Eixo X com a importância SHAP
-            orientation='h',  # Gráfico de barras horizontais
-            marker=dict(color=shap_df_melted["Importance"], colorscale="RdBu"),  # Cores para facilitar leitura
+
+        fig2 = go.Figure()
+        fig2.add_trace(go.Bar(
+            y=shap_df_melted["Feature"],
+            x=shap_df_melted["Importance"],
+            orientation='h',
+            marker=dict(color=shap_df_melted["Importance"], colorscale="RdBu"),
         ))
-        
-        # Ajustar layout do gráfico
-        fig.update_layout(
+        fig2.update_layout(
             title="Explicação da Predição (SHAP) - Paciente em avaliação",
-            xaxis_title="Importância SHAP",
-            yaxis_title="Feature",
-            xaxis=dict(showgrid=True),
-            yaxis=dict(showgrid=False),
+            xaxis_title="Importância SHAP", yaxis_title="Feature",
+            xaxis=dict(showgrid=True), yaxis=dict(showgrid=False),
+            margin=dict(l=140, r=20, t=60, b=40),
         )
-        
-        # Exibir no Streamlit
-        st.plotly_chart(fig)
-    
+        st.plotly_chart(fig2, use_container_width=True)
+
     except Exception as e:
         st.write("❌ Erro ao realizar predição...", str(e))
-
-
