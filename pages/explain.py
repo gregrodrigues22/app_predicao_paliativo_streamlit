@@ -1,149 +1,330 @@
-import streamlit as st
-import pandas as pd
+# explain.py
 import os
-import joblib
-import h2o
-import gdown
+import streamlit as st
 import plotly.graph_objects as go
-from h2o.estimators import H2OGenericEstimator
+import gdown
+import h2o
 
-# Título do formulário
-st.title("Explicação do Modelo")
+# =========================================================
+# CONFIG INICIAL
+# =========================================================
+st.set_page_config(page_title="🧠 Explicação do Modelo", layout="wide")
 
-st.markdown("**Problema**: A transição do cuidado curativo para o paliativo ainda é um desafio na prática clínica, especialmente para pacientes com câncer atendidos em serviços de emergência. Muitos médicos tendem a ser excessivamente otimistas em relação à sobrevida de seus pacientes, o que pode atrasar a recomendação para cuidados paliativos")
+# -------- util: procurar arquivos (logo/foto etc.)
+ASSETS = "assets"
+def first_existing(*names):
+    for n in names:
+        for base in (".", ASSETS):
+            p = os.path.join(base, n)
+            if os.path.exists(p):
+                return p
+    return None
 
-st.markdown("**Solução**: Este aplicativo utiliza um modelo de aprendizado de máquina desenvolvido a partir de dados reais de pacientes atendidos no pronto-socorro do Instituto do Câncer do Estado de São Paulo (ICESP). O objetivo é prever a sobrevida de curto prazo (menos de seis meses) e longo prazo (mais de seis meses) desses pacientes a partir de variáveis clínicas e demográficas disponíveis no momento da admissão na emergência.")
+LOGO = first_existing("logo.png", "logo.jpg", "logo.jpeg", "logo.webp")
 
-st.markdown("**Metodologia**: A metodologia aplicada envolve modelos de aprendizado de máquina, como Gradient Boosting Machine (GBM), para analisar fatores como idade, diagnóstico oncológico, estado clínico na emergência, sinais vitais e o escore funcional (ECOG) da última consulta eletiva. O modelo foi validado e apresentou alto desempenho, demonstrando que é possível identificar, de forma automatizada e com alta precisão, pacientes que podem se beneficiar de uma avaliação mais detalhada para cuidados paliativos.")
+# =========================================================
+# CABEÇALHO
+# =========================================================
+st.markdown(
+    """
+    <div style='background: linear-gradient(to right, #004e92, #000428);
+                padding: 40px; border-radius: 12px; margin-bottom:30px'>
+        <h1 style='color: white; margin: 0;'>🧠 Explicação do Modelo</h1>
+        <p style='color: white; font-size:16px; margin-top:8px;'>
+            Predição de sobrevida em pacientes oncológicos na emergência –
+            como o modelo foi construído, como performa e como interpretar suas saídas.
+        </p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
-#Baixando modelo
-try:
-    # URL do modelo no Google Drive
-    file_id = "1IEGIuHt1l8xwR_Jl5J_fuKf0h5Fkdwx2"  # Substitua pelo ID do seu arquivo
+# Esconde a lista padrão de páginas no topo da sidebar
+st.markdown(
+    """
+    <style>
+    [data-testid="stSidebarNav"] { display: none; }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# =========================================================
+# MENU LATERAL
+# =========================================================
+with st.sidebar:
+    if LOGO:
+        st.image(LOGO, use_container_width=True)
+    st.markdown("<hr style='border:none;border-top:1px solid #ccc;'/>", unsafe_allow_html=True)
+    st.header("Menu")
+    st.page_link("app.py",       label="Predição no PoC", icon="📈")
+    st.page_link("explain.py",   label="Explicação do Modelo", icon="🧠")
+
+    st.markdown("<hr style='border:none;border-top:1px solid #ccc;'/>", unsafe_allow_html=True)
+    st.subheader("Conecte-se")
+    st.markdown("""
+- 💼 [LinkedIn](https://www.linkedin.com/in/gregorio-healthdata/)
+- ▶️ [YouTube](https://www.youtube.com/@Patients2Python)
+- 📸 [Instagram](https://www.instagram.com/patients2python/)
+- 🌐 [Site](https://patients2python.com.br/)
+- 🐙 [GitHub](https://github.com/gregrodrigues22)
+- 👥💬 [Comunidade](https://chat.whatsapp.com/CBn0GBRQie5B8aKppPigdd)
+- 🤝💬 [WhatsApp](https://patients2python.sprinthub.site/r/whatsapp-olz)
+- 🎓 [Escola](https://app.patients2python.com.br/browse)
+    """, unsafe_allow_html=True)
+
+# =========================================================
+# CONTEXTO CLÍNICO
+# =========================================================
+st.subheader("Contexto clínico e motivação")
+st.markdown("""
+A transição do cuidado **curativo para o paliativo** segue desafiadora na emergência oncológica.
+Muitas vezes há **superestimação de sobrevida** e atrasos na discussão de metas terapêuticas.
+O modelo busca **suportar decisões** com dados rotineiros da admissão (sinais vitais, prioridade/status,
+diagnóstico por CID, ECOG da última consulta eletiva, idade, antropometria e histórico recente).
+""")
+st.info("**Uso clínico**: ferramenta de apoio — **não substitui** julgamento médico. Sempre integrar com avaliação clínica, preferências do paciente/família e diretrizes.")
+
+# =========================================================
+# CARREGAMENTO DO MODELO (CACHEADO)
+# =========================================================
+@st.cache_resource(show_spinner=True)
+def load_mojo_model():
+    file_id = "1IEGIuHt1l8xwR_Jl5J_fuKf0h5Fkdwx2"  # ID no Google Drive
     url = f"https://drive.google.com/uc?id={file_id}"
-
-    # Nome do arquivo para salvar localmente
-    model_filename = "modelo_em_mojo.zip"
-
-    # Baixar o modelo
-    @st.cache_resource
-    def download_model():
-        gdown.download(url, model_filename, quiet=False)
-        return model_filename
-        
-    # Baixar o modelo
-    download_model()
-
-    # Iniciar o H2O e carregar o modelo
+    mojo_path = "modelo_em_mojo.zip"
+    if not os.path.exists(mojo_path):
+        gdown.download(url, mojo_path, quiet=True)
     h2o.init()
+    return h2o.import_mojo(mojo_path)
 
-    # Carregar o modelo H2O
-    model = h2o.import_mojo(model_filename)
-    st.session_state['model'] = model
-        
-    st.write("✅ Modelo carregado com sucesso!")
+with st.spinner("Carregando e preparando o modelo..."):
+    try:
+        model = load_mojo_model()
+        st.success("✅ Modelo carregado com sucesso.")
+    except Exception as e:
+        st.error(f"❌ Erro ao carregar o modelo: {e}")
+        st.stop()
 
-    model_performance = model.model_performance()
-    auc = model_performance.auc()  # Área sob a curva ROC
-    logloss = model_performance.logloss()  # Log Loss
-    rmse = model_performance.rmse()  # Root Mean Squared Error
-    mse = model_performance.mse()  # Mean Squared Error
-    r2 = model_performance.r2()  # Coeficiente de determinação R²
+# =========================================================
+# MÉTRICAS GLOBAIS + CURVAS
+# =========================================================
+st.subheader("Desempenho global do modelo")
 
-    st.subheader("📊 Métricas do Modelo")
+def _safe_call(obj, name, default=None, *args, **kwargs):
+    try:
+        fn = getattr(obj, name)
+        return fn(*args, **kwargs)
+    except Exception:
+        return default
 
-    # Obter os valores de FPR e TPR para a curva ROC
-    fpr, tpr = model_performance.roc()
+try:
+    mp = model.model_performance()
 
-    # Criar o gráfico da Curva ROC com Plotly
-    fig_roc = go.Figure()
+    # — Métricas agregadas —
+    auc      = _safe_call(mp, "auc")
+    aucpr    = _safe_call(mp, "aucpr")
+    logloss  = _safe_call(mp, "logloss")
+    rmse     = _safe_call(mp, "rmse")
+    mse      = _safe_call(mp, "mse")
+    r2       = _safe_call(mp, "r2")
 
-    fig_roc.add_trace(go.Scatter(
-        x=fpr, y=tpr,
-        mode='lines',
-        name=f'Curva ROC (AUC = {auc:.4f})',
-        line=dict(color='blue')
-    ))
-    
-    fig_roc.add_trace(go.Scatter(
-        x=[0, 1], y=[0, 1],
-        mode='lines',
-        name='Baseline',
-        line=dict(dash='dash', color='gray')
-    ))
-    
-    fig_roc.update_layout(
-        title="Curva ROC",
-        xaxis_title="Taxa de Falsos Positivos",
-        yaxis_title="Taxa de Verdadeiros Positivos",
-        template="plotly_white"
+    # Cards
+    cols = st.columns(6)
+    cols[0].metric("AUC (ROC)", f"{auc:.3f}" if auc is not None else "—")
+    cols[1].metric("AUCPR",     f"{aucpr:.3f}" if aucpr is not None else "—")
+    cols[2].metric("LogLoss",   f"{logloss:.3f}" if logloss is not None else "—")
+    cols[3].metric("RMSE",      f"{rmse:.3f}" if rmse is not None else "—")
+    cols[4].metric("MSE",       f"{mse:.3f}" if mse is not None else "—")
+    cols[5].metric("R²",        f"{r2:.3f}" if r2 is not None else "—")
+
+    # — Curva ROC —
+    st.markdown("#### Curva ROC")
+    try:
+        fpr, tpr = mp.roc()
+        fig_roc = go.Figure()
+        fig_roc.add_trace(go.Scatter(x=fpr, y=tpr, mode="lines",
+                                     name=f"ROC (AUC = {auc:.3f})" if auc is not None else "ROC"))
+        fig_roc.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode="lines",
+                                     name="Aleatório", line=dict(dash="dash")))
+        fig_roc.update_layout(xaxis_title="Falsos Positivos (FPR)",
+                              yaxis_title="Verdadeiros Positivos (TPR)",
+                              template="plotly_white", height=420)
+        st.plotly_chart(fig_roc, use_container_width=True)
+    except Exception:
+        st.warning("Não foi possível desenhar a ROC para este artefato.")
+
+    # — Curva Precisão-Revocação (PR) —
+    st.markdown("#### Curva Precisão-Revocação (PR)")
+    try:
+        # h2o disponibiliza precision(), recall() por threshold;
+        # para traçar PR, buscamos arrays de precisão e recall
+        prec_tbl = _safe_call(mp, "precision")
+        rec_tbl  = _safe_call(mp, "recall")
+        if prec_tbl is not None and rec_tbl is not None:
+            precisions = [float(x) for x in prec_tbl["precision"]]
+            recalls    = [float(x) for x in rec_tbl["recall"]]
+            fig_pr = go.Figure()
+            fig_pr.add_trace(go.Scatter(x=recalls, y=precisions, mode="lines+markers",
+                                        name=f"PR (AUCPR = {aucpr:.3f})" if aucpr is not None else "PR"))
+            fig_pr.update_layout(xaxis_title="Revocação (Sensibilidade)",
+                                 yaxis_title="Precisão (PPV)",
+                                 template="plotly_white", height=420)
+            st.plotly_chart(fig_pr, use_container_width=True)
+        else:
+            st.info("Tabela de precisão/recall não disponível neste artefato.")
+    except Exception:
+        st.info("Não foi possível construir a curva PR com este artefato.")
+
+    st.caption(
+        "Interpretação: **AUC (ROC)** mede discriminação global; **AUCPR** é informativa em classes desbalanceadas. "
+        "A ROC mostra trade-offs sensibilidade/especificidade; a PR mostra trade-offs precisão/revocação."
     )
-    
-    # Exibir no Streamlit
-    st.plotly_chart(fig_roc)
-    st.markdown(
-    """
-    Interpretação da Curva ROC:  
-    A Curva ROC (Receiver Operating Characteristic) mostra o desempenho do modelo ao variar o limiar de decisão.  
-    - O eixo **X** representa a **Taxa de Falsos Positivos (FPR)**, ou seja, a proporção de negativos que foram incorretamente classificados como positivos.  
-    - O eixo **Y** representa a **Taxa de Verdadeiros Positivos (TPR)**, que indica a proporção de positivos corretamente identificados.  
-    - A linha pontilhada representa o **modelo aleatório**, enquanto a curva azul representa o modelo preditivo.  
-    - O valor de **AUC (Área Sob a Curva)** indica a capacidade do modelo em distinguir as classes.  
-      - Um **AUC próximo de 1** indica um modelo altamente discriminativo.  
-      - Um **AUC de 0.5** indica um modelo sem capacidade preditiva, equivalente ao acaso.  
-      
-    Neste caso, o AUC de **0.9123** sugere que o modelo tem um excelente desempenho na diferenciação entre as classes.
-    """
-)
-    st.markdown("**Shap Values**")
-    st.image("assets/shap_importance.png", caption="Gráfico de Importância dos Atributos via SHAP")
-
-    st.markdown(
-    """
-    O gráfico de importância dos atributos via SHAP mostra como cada variável contribui para as previsões do modelo. Cada ponto no gráfico representa um valor SHAP para uma observação do conjunto de dados.
-
-    Elementos do Gráfico
-    
-    1. Eixo Y - Nome das variáveis:
-    Listadas do topo para a base, em ordem de importância.
-    Quanto mais alto na lista, maior a influência da variável na predição do modelo.
-    
-    2. Eixo X - Valor SHAP:
-    Indica a magnitude e a direção do impacto de cada variável na predição.
-    Valores positivos deslocam a predição para maior probabilidade da classe-alvo.
-    Valores negativos deslocam a predição para menor probabilidade da classe-alvo.
-    
-    3. Cores - Valor Normalizado da Variável:
-    Azul: Valores baixos da variável.
-    Rosa: Valores altos da variável.
-    Isso ajuda a entender a relação entre o valor da variável e sua influência no modelo.
-    
-    4. Como interpretar?
-    Variáveis com maior dispersão horizontal (ou seja, uma grande variação nos valores SHAP) indicam maior impacto nas predições do modelo.
-    Se os pontos de uma variável estiverem predominantemente na direita (valores SHAP positivos), essa variável aumenta a chance da classe predita.
-    Se os pontos estiverem na esquerda (valores SHAP negativos), essa variável reduz a chance da classe predita.
-    Sobreposição de cores indica que a relação da variável com a predição pode ser complexa, não apenas linear.
-
-    5. Aplicação do modelo
-    >• ECOG : Interpretação esperada: O ECOG é uma medida importante para prever a sobrevida dos pacientes oncológicos. Valores mais altos indicam pior estado funcional do paciente, o que está fortemente associado a menor sobrevida. Concordância: Faz sentido que o ECOG seja a variável mais importante no modelo. Isso está de acordo com a literatura médica, que sugere que o estado funcional é um dos melhores preditores de prognóstico em pacientes oncológicos.
-    
-    >• Internação recente: Interpretação esperada: Internações recentes podem indicar uma piora significativa no quadro clínico do paciente, o que está diretamente relacionado com uma menor sobrevida. Concordância: Faz sentido que essa variável seja importante no modelo, pois pacientes que foram internados recentemente tendem a ter um estado de saúde mais grave.
-    
-    >• ICD: Refere-se ao código da condição clínica primária do paciente. A ampla distribuição de valores SHAP sugere que diferentes códigos ICD têm pesos distintos na decisão do modelo.
-    
-    >• Frequência Cardíaca: Interpretação esperada: A frequência cardíaca é um indicador importante do estado geral de saúde. Valores anormais podem indicar complicações que afetam o prognóstico. Concordância: A presença de HR_knn como uma variável importante está alinhada com o fato de que sinais vitais podem ajudar a identificar pacientes em risco.
-
-    >• Peso e Altura: Interpretação esperada: Como discutido anteriormente, o peso e a altura individuais são esperados como menos importantes, já que o IMC já captura essa informação. Surpresa: Essas variáveis ainda aparecem como relevantes no gráfico, sugerindo que há um impacto adicional de peso e altura que o IMC sozinho não explica.
-
-    >• Valores Ausentes de ECOG e IMC: Interpretação esperada: As variáveis missing_ecog e missing_bmi indicam ausência de dados. A expectativa é que essas variáveis não tivessem um impacto tão grande. Surpresa: O impacto de missing_ecog é maior do que esperado. Isso sugere que a ausência do ECOG pode ser um indicador de pacientes em pior estado (por exemplo, pacientes que não completaram avaliações devido à gravidade da doença).
-
-    >• Idade: Interpretação esperada: Idade é uma variável fundamental em modelos de prognóstico oncológico. Em geral, pacientes mais idosos tendem a ter um prognóstico pior, especialmente em pacientes com câncer avançado. Concordância: Isso está alinhado com a literatura médica: idade avançada é um fator de risco para pior prognóstico em pacientes oncológicos. Faz sentido que o modelo esteja capturando essa informação corretamente.
-
-    >• Tempo entre Última Consulta e PS: Pacientes que vão ao PS logo após uma consulta ambulatorial podem estar fazendo isso porque tiveram um agravamento rápido do quadro clínico. Isso pode indicar que o paciente estava estável na consulta, mas piorou rapidamente, o que pode ser um indicativo de baixa sobrevida. Pacientes que só vão ao PS após um longo intervalo sem consultas podem ser aqueles que estavam lidando bem com suas condições crônicas por mais tempo. Esses pacientes podem ter ido ao PS por motivos não emergenciais ou em uma situação menos crítica. Baixo TI_median está associado a pior prognóstico, provavelmente porque esses pacientes tiveram um agravamento rápido após a última consulta. Alto TI_median está associado a melhor prognóstico, provavelmente porque esses pacientes não apresentaram complicações graves por um longo período.
-
-    """
-)
-    
 except Exception as e:
-        st.write("❌ Erro ao carregar modelo...", str(e))
+    st.warning(f"Não foi possível calcular métricas globais: {e}")
 
+# =========================================================
+# MÉTRICAS POR LIMIAR (ÓTIMO F0.5) + MATRIZ DE CONFUSÃO
+# =========================================================
+st.subheader("Métricas no limiar operacional (ótimo F0.5)")
+
+def get_metric_table(mp, name):
+    tbl = _safe_call(mp, name)
+    if tbl is None: 
+        return None
+    # h2o retorna dict-like com colunas; normalizamos
+    try:
+        thresholds = [float(x) for x in tbl["threshold"]]
+    except Exception:
+        thresholds = [float(x[0]) for x in tbl]  # fallback
+    def col(colname, default=0.0):
+        try:
+            return [float(x) for x in tbl[colname]]
+        except Exception:
+            return [default]*len(thresholds)
+    return thresholds, col
+
+try:
+    # tabelas por threshold
+    f05_tbl = _safe_call(mp, "F0point5") or _safe_call(mp, "f0point5")
+    f1_tbl  = _safe_call(mp, "f1")
+    prec_tbl = _safe_call(mp, "precision")
+    rec_tbl  = _safe_call(mp, "recall")
+    acc_tbl  = _safe_call(mp, "accuracy")
+    spec_tbl = _safe_call(mp, "specificity")
+
+    # escolher threshold: max F0.5, senão max F1, senão 0.5
+    if f05_tbl:
+        ths  = [float(x) for x in f05_tbl["threshold"]]
+        f05s = [float(x) for x in f05_tbl["f0point5"]]
+        best_idx = max(range(len(f05s)), key=lambda i: f05s[i])
+        best_th  = ths[best_idx]
+        best_f05 = f05s[best_idx]
+    elif f1_tbl:
+        ths  = [float(x) for x in f1_tbl["threshold"]]
+        f1s  = [float(x) for x in f1_tbl["f1"]]
+        best_idx = max(range(len(f1s)), key=lambda i: f1s[i])
+        best_th  = ths[best_idx]
+        best_f05 = None
+    else:
+        best_th  = 0.5
+        best_f05 = None
+
+    # extrair métricas nesse threshold
+    def metric_at(tbl, colname, th):
+        if not tbl: return None
+        ths = [float(x) for x in tbl["threshold"]]
+        vals = [float(x) for x in tbl[colname]]
+        # pega o mais próximo
+        idx = min(range(len(ths)), key=lambda i: abs(ths[i]-th))
+        return vals[idx]
+
+    precision = metric_at(prec_tbl, "precision", best_th)
+    recall    = metric_at(rec_tbl,  "recall",    best_th)
+    accuracy  = metric_at(acc_tbl,  "accuracy",  best_th)
+    specificity = metric_at(spec_tbl, "specificity", best_th)
+    f1 = metric_at(f1_tbl, "f1", best_th) if f1_tbl else None
+
+    c = st.columns(6)
+    c[0].metric("Threshold", f"{best_th:.3f}")
+    c[1].metric("Precisão (PPV)", f"{precision:.3f}" if precision is not None else "—")
+    c[2].metric("Revocação (Sens.)", f"{recall:.3f}" if recall is not None else "—")
+    c[3].metric("Especificidade", f"{specificity:.3f}" if specificity is not None else "—")
+    c[4].metric("Acurácia", f"{accuracy:.3f}" if accuracy is not None else "—")
+    c[5].metric("F0.5", f"{best_f05:.3f}" if best_f05 is not None else "—")
+
+    # Matriz de confusão no limiar ótimo
+    st.markdown("#### Matriz de confusão (no limiar selecionado)")
+    try:
+        # alguns artefatos trazem uma família de matrizes por threshold
+        # tentamos pegar a do threshold mais próximo
+        cm_list = _safe_call(mp, "confusion_matrix")
+        if cm_list and "thresholds_and_metric_scores" in cm_list:
+            # h2o às vezes expõe uma tabela; aqui optamos pela agregada se existir
+            cm = _safe_call(mp, "confusion_matrix", None)
+        else:
+            cm = _safe_call(mp, "confusion_matrix", None, metrics="f0point5") or _safe_call(mp, "confusion_matrix", None)
+        if cm is not None and hasattr(cm, "as_data_frame"):
+            df_cm = cm.as_data_frame()
+            # exibimos de forma enxuta se a tabela for grande
+            try:
+                st.dataframe(df_cm, use_container_width=True, hide_index=True)
+            except Exception:
+                st.write(df_cm)
+        else:
+            st.info("Confusion matrix não disponível para este artefato.")
+    except Exception:
+        st.info("Não foi possível recuperar a matriz de confusão para o limiar escolhido.")
+
+    st.caption(
+        "Limiar escolhido pelo **máximo F0.5** (quando disponível) para priorizar **precisão** e reduzir falso-positivo de Baixa Sobrevida. "
+        "Revise periodicamente conforme capacidade assistencial."
+    )
+except Exception as e:
+    st.warning(f"Não foi possível calcular métricas por limiar: {e}")
+
+# =========================================================
+# VARIÁVEIS MAIS RELEVANTES (SHAP)
+# =========================================================
+st.subheader("Variáveis mais relevantes e racional clínico")
+st.markdown("""
+- **ECOG** (última consulta eletiva) — maior peso; valores altos indicam pior prognóstico.  
+- **CID** oncológico — sítio/estadiamento modulam risco basal.  
+- **Sinais vitais** — **PAM**, **FC** e **SatO₂** refletem gravidade na admissão.  
+- **TI** (tempo desde última consulta) e **TDR** (retorno/reinternação recente) indicam trajetória clínica.  
+- **Idade/IMC** e **status/prioridade/tendência** complementam o estrato de risco.
+""")
+
+st.markdown("#### Visão global por SHAP")
+shap_img = first_existing("shap_importance.png", "shap_importance.jpg", "shap_importance.webp")
+if shap_img:
+    st.image(os.path.join(ASSETS, "shap_importance.png") if "assets" in shap_img else shap_img,
+             use_column_width=True, caption="Importância das variáveis explicativas (valores SHAP)")
+else:
+    st.warning("Imagem de SHAP não encontrada em assets/. Coloque 'assets/shap_importance.png'.")
+
+st.caption(
+    "Leitura: valores SHAP **positivos** empurram para **Baixa Sobrevida**; **negativos** para **Longa Sobrevida**. "
+    "Maior dispersão horizontal = maior influência."
+)
+
+# =========================================================
+# DESENVOLVIMENTO / LIMITAÇÕES / BOAS PRÁTICAS
+# =========================================================
+st.subheader("Desenvolvimento, validação e limitações")
+st.markdown("""
+- **H2O AutoML** com múltiplos algoritmos; **GBM** selecionado pelo equilíbrio AUC/AUCPR e baixo falso-positivo.  
+- **Validação k-fold (k=5)**; limiar calibrado com **F0.5** (prioriza precisão).  
+- Limitações: estudo **retrospectivo** de **centro único**; dependência de **dados de prontuário**; ausência de variáveis pode carregar **informação implícita** (p.ex., ECOG ausente).  
+- Ética/Equidade: modelos podem refletir **viés** dos dados — uso **sob supervisão clínica**, com monitoramento e re-calibração.
+""")
+
+st.subheader("Boas práticas de uso no pronto-socorro")
+st.markdown("""
+1. Ativar **gatilho** para avaliação de **Cuidados Paliativos** quando a probabilidade de **Baixa Sobrevida** exceder o limiar operacional.  
+2. **Confirmar** com exame clínico, história oncológica e preferências do paciente/família.  
+3. **Documentar** discussão de metas e plano de cuidado (controle de sintomas, conforto, comunicação).  
+4. **Monitorar** métricas locais (sens., esp., precisão, F0.5) e ajustar limiar conforme a capacidade assistencial.
+""")
+
+st.caption("Material para apoio à decisão clínica e educação. Não substitui o julgamento médico individualizado.")
