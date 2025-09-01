@@ -81,7 +81,7 @@ with st.sidebar:
     # Se estiver em app multipágina, esses page_links funcionam nativamente.
     with st.expander("Explicação do Modelo", expanded=True):
         # Link para a própria página (opcional em multipage)
-        st.page_link("explain.py", label="Explicação do Modelo", icon="📙")
+        st.page_link("pages/explain.py", label="Explicação do Modelo", icon="📙")
 
     st.markdown("<hr style='border:none;border-top:1px solid #ccc;'/>", unsafe_allow_html=True)
 
