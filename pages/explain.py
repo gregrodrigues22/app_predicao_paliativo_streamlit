@@ -194,35 +194,6 @@ try:
             name="Aleatório", line=dict(dash="dash")
         ))
         fig_roc.update_layout(
-            xaxis_title="Falsos Positivos (FPR)",
-            yaxis_title="Verdadeiros Positivos (TPR)",
-            template="plotly_white", height=420
-        )
-        st.plotly_chart(fig_roc, use_container_width=True)
-    except Exception:
-        st.warning("Não foi possível desenhar a ROC para este artefato.")
-
-    st.caption(
-        "**AUC (ROC)** mede a capacidade de discriminar as classes em todos os limiares. "
-        "Valores próximos a **1,0** indicam excelente discriminação; **0,5** equivale ao acaso."
-    )
-except Exception as e:
-    st.warning(f"Não foi possível calcular/exibir métricas globais: {e}")
-
- # Curva ROC
-    st.markdown("#### Curva ROC")
-    try:
-        fpr, tpr = mp.roc()
-        fig_roc = go.Figure()
-        fig_roc.add_trace(go.Scatter(
-            x=fpr, y=tpr, mode="lines",
-            name=f"ROC (AUC = {auc:.3f})" if auc is not None else "ROC"
-        ))
-        fig_roc.add_trace(go.Scatter(
-            x=[0, 1], y=[0, 1], mode="lines",
-            name="Aleatório", line=dict(dash="dash")
-        ))
-        fig_roc.update_layout(
             xaxis_title="Taxa de Falsos Positivos (FPR)",
             yaxis_title="Taxa de Verdadeiros Positivos (TPR)",
             template="plotly_white", height=420
@@ -231,21 +202,24 @@ except Exception as e:
     except Exception:
         st.warning("Não foi possível desenhar a ROC para este artefato.")
 
-    # Interpretação detalhada
+    # Interpretação detalhada da ROC
     st.markdown("""
-    **Interpretação da Curva ROC:**  
-    A Curva ROC (Receiver Operating Characteristic) mostra o desempenho do modelo ao variar o limiar de decisão.  
+**Interpretação da Curva ROC:**  
+A Curva ROC (Receiver Operating Characteristic) mostra o desempenho do modelo ao variar o limiar de decisão.  
 
-    - O eixo **X** representa a **Taxa de Falsos Positivos (FPR)**, ou seja, a proporção de negativos incorretamente classificados como positivos.  
-    - O eixo **Y** representa a **Taxa de Verdadeiros Positivos (TPR)**, a proporção de positivos corretamente identificados.  
-    - A linha pontilhada cinza representa um **modelo aleatório**, enquanto a curva azul mostra o **modelo preditivo**.  
-    - O valor de **AUC (Área sob a Curva)** indica a capacidade de o modelo distinguir entre as classes:  
-        - Um **AUC próximo de 1,0** → modelo altamente discriminativo.  
-        - Um **AUC de 0,5** → modelo sem capacidade preditiva (equivalente ao acaso).  
+- O eixo **X** representa a **Taxa de Falsos Positivos (FPR)**, ou seja, a proporção de negativos incorretamente classificados como positivos.  
+- O eixo **Y** representa a **Taxa de Verdadeiros Positivos (TPR)**, a proporção de positivos corretamente identificados.  
+- A linha pontilhada cinza representa um **modelo aleatório**, enquanto a curva azul mostra o **modelo preditivo**.  
+- O valor de **AUC (Área sob a Curva)** indica a capacidade do modelo em distinguir as classes:  
+  - **AUC próximo de 1,0** → modelo altamente discriminativo.  
+  - **AUC de 0,5** → modelo sem capacidade preditiva (equivalente ao acaso).  
 
-    Neste caso, um AUC de **{:.3f}** sugere que o modelo apresenta **excelente desempenho** na diferenciação entre longa e curta sobrevida.
-    """.format(auc if auc else 0.0))
-    
+Neste caso, um AUC de **{auc_val:.3f}** sugere que o modelo apresenta **excelente desempenho** na diferenciação entre longa e curta sobrevida.
+""".format(auc_val=(auc if auc else 0.0)))
+
+except Exception as e:
+    st.warning(f"Não foi possível calcular/exibir métricas globais: {e}")
+
 # =======================
 # VARIÁVEIS IMPORTANTES + SHAP
 # =======================
