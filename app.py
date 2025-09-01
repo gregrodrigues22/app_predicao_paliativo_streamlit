@@ -104,7 +104,7 @@ with st.sidebar:
 # CONTEÚDO PRINCIPAL DO APP (SEU CÓDIGO)
 # --------------------------------------------------------------
 
-st.title("Predição de Sobrevida na Emergência para Pacientes Oncológicos 📈🎯")
+st.title("Predição no PoC 📈🎯")
 st.write("Preencha os campos abaixo com os valores correspondentes às variáveis utilizadas no modelo preditivo.")
 
 #Criando listas
