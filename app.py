@@ -5,12 +5,12 @@ import os
 from pathlib import Path
 import streamlit as st
 import pandas as pd
-import os
 import joblib
 import h2o
 import gdown
 import plotly.graph_objects as go
 from h2o.estimators import H2OGenericEstimator
+import re
 
 # --------------------------------------------------------------
 # Configuração da página
@@ -64,7 +64,6 @@ st.markdown(
 # --------------------------------------------------------------
 # Sidebar 
 # --------------------------------------------------------------
-
 with st.sidebar:
     if LOGO:
         st.image(str(LOGO), use_container_width=True)
@@ -73,14 +72,10 @@ with st.sidebar:
     st.markdown("<hr style='border:none;border-top:1px solid #ccc;'/>", unsafe_allow_html=True)
     st.header("Menu")
 
-    # Se estiver em app multipágina, esses page_links funcionam nativamente.
     with st.expander("Predição no PoC", expanded=True):
-        # Link para a própria página (opcional em multipage)
         st.page_link("app.py", label="Predição de Sobrevida", icon="📈")
 
-    # Se estiver em app multipágina, esses page_links funcionam nativamente.
     with st.expander("Explicação do Modelo", expanded=True):
-        # Link para a própria página (opcional em multipage)
         st.page_link("pages/explain.py", label="Explicação do Modelo", icon="📙")
 
     st.markdown("<hr style='border:none;border-top:1px solid #ccc;'/>", unsafe_allow_html=True)
@@ -98,12 +93,11 @@ with st.sidebar:
         - 🎓 [Escola](https://app.patients2python.com.br/browse)
         """,
         unsafe_allow_html=True
-        )
+    )
 
 # --------------------------------------------------------------
 # CONTEÚDO PRINCIPAL DO APP
 # --------------------------------------------------------------
-
 st.title("Predição no PoC 📈🎯")
 st.write("Preencha os campos abaixo com os valores correspondentes às variáveis utilizadas no modelo preditivo.")
 
@@ -178,9 +172,8 @@ status_options_full = [
 ]
 tendency_options = ["Estável", "Instável", "Melhorando"]
 
-# opções estéticas p/ Status (remove tudo depois de " - (" ou " (")
-import re
 def status_display(s: str) -> str:
+    # tira " - (Cor)" ou "(Cor)"
     return re.sub(r"\s*(-\s*)?\([^)]*\)", "", s).strip()
 
 status_display_options = [status_display(s) for s in status_options_full]
@@ -215,7 +208,6 @@ if not missing_bmi:
     height = st.slider("Altura (cm)", min_value=120, max_value=220, value=170, step=1, key="height")
     weight = st.slider("Peso (kg)", min_value=30, max_value=200, value=70, step=1, key="weight")
     bmi = round(weight / ((height / 100) ** 2), 1)
-
     st.caption(f"IMC calculado automaticamente: **{bmi} kg/m²**")
 else:
     height, weight, bmi = 0.0, 0.0, 0.0
@@ -229,7 +221,11 @@ status_original = status_display_to_full[st.session_state["status_display"]]  # 
 
 prioridade_color = st.radio("Prioridade", options=["🟢 Verde", "🟡 Amarelo", "🔴 Vermelho"],
                             index=1, horizontal=True, key="prioridade_color")
-priority_map_display_to_value = {"🟢 Verde": "Verde","🟡 Amarelo": "Amarelo","🔴 Vermelho": "Vermelho"}
+priority_map_display_to_value = {
+    "🟢 Verde": "Verde",
+    "🟡 Amarelo": "Amarelo",
+    "🔴 Vermelho": "Vermelho"
+}
 status_priority = priority_map_display_to_value[st.session_state["prioridade_color"]]
 
 tendency = st.radio("Tendência clínica", options=tendency_options, horizontal=True, key="tendency")
@@ -283,24 +279,33 @@ if reset_button:
 
 # ---------- Exibição resumida ----------
 if submit_button:
+    pas = st.session_state["sbp"]
+    pad = st.session_state["dbp"]
+    pam_str = f"{pas}/{pad}/{mbp}"
+
+    altura_val = 0 if st.session_state["missing_bmi"] else st.session_state["height"]
+    peso_val   = 0 if st.session_state["missing_bmi"] else st.session_state["weight"]
+    imc_val    = 0 if st.session_state["missing_bmi"] else bmi
+    ecog_val   = None if st.session_state["missing_ecog"] else st.session_state.get("ecog", 0)
+
     st.success("Dados enviados com sucesso!")
     st.write({
         "Idade": st.session_state["age"],
         "Sexo": st.session_state["gender"],
-        "PAS/PAD/PAM (mmHg)": f'{st.session_state["sbp"]}/{st.session_state["dbp"]}/{mbp}',
+        "PAS/PAD/PAM (mmHg)": pam_str,
         "Frequência Cardíaca (bpm)": st.session_state["hr"],
         "Saturação de Oxigênio (%)": st.session_state["saot"],
         "Ausência de Antropometria": st.session_state["missing_bmi"],
-        "Altura (cm)": 0 if st.session_state["missing_bmi"] else st.session_state["height"],
-        "Peso (kg)": 0 if st.session_state["missing_bmi"] else st.session_state["weight"],
-        "IMC (auto)": 0 if st.session_state["missing_bmi"] else bmi,
+        "Altura (cm)": altura_val,
+        "Peso (kg)": peso_val,
+        "IMC (auto)": imc_val,
         "Status (exibição)": st.session_state["status_display"],
         "Status (interno p/ modelo)": status_original,
         "Prioridade (cor)": status_priority,
         "Tendência clínica": st.session_state["tendency"],
         "CID-10": st.session_state["icd"],
         "Ausência de ECOG": st.session_state["missing_ecog"],
-        "ECOG": None if st.session_state["missing_ecog"] else st.session_state.get("ecog", 0),
+        "ECOG": ecog_val,
         "Internação Recente": st.session_state["tdr"],
         "Tempo entre Última Consulta e PS (dias)": st.session_state["ti"],
     })
@@ -437,7 +442,7 @@ if submit_button:
         prob_baixa  = float(predictions_df['p1'][0])
         classe_pred = int(predictions_df['predict'][0])
 
-        # Limiar de decisão (os mesmos que você usa)
+        # Limiar de decisão
         limiar_classe_0 = 0.4283
         limiar_classe_1 = 0.5717
 
@@ -510,7 +515,6 @@ if submit_button:
                 .sort_values("abs_imp", ascending=False)
                 .head(5)[["Feature", "Importance"]])
 
-        # Texto para clínicos: positivo/negativo
         bullets = []
         for _, row in top5.iterrows():
             direcao = "↑ risco" if row["Importance"] > 0 else "↓ risco"
@@ -523,7 +527,7 @@ if submit_button:
             "Sinal positivo tende a empurrar para a classe predita; sinal negativo, no sentido oposto."
         )
 
-        # Gráfico SHAP (como antes)
+        # Gráfico SHAP
         shap_df_plot = shap_df_melted.sort_values("Importance", key=lambda s: s.abs(), ascending=True)
         fig2 = go.Figure()
         fig2.add_trace(go.Bar(
@@ -543,17 +547,28 @@ if submit_button:
         # Dados usados (para auditoria clínica rápida)
         st.markdown("## Dados utilizados nesta avaliação")
         colA, colB, colC = st.columns(3)
+
+        # colA
         with colA:
             st.write(f"**Idade:** {st.session_state['age']} anos")
             st.write(f"**Sexo:** {st.session_state['gender']}")
             st.write(f"**PAS/PAD/PAM:** {st.session_state['sbp']}/{st.session_state['dbp']}/{mbp} mmHg")
             st.write(f"**FC:** {st.session_state['hr']} bpm")
+
+        # colB (evitar f-strings aninhadas)
         with colB:
             st.write(f"**SatO₂:** {st.session_state['saot']}%")
-            st.write(f"**Altura/Peso:** "
-                     f"{'-' if st.session_state['missing_bmi'] else f'{st.session_state['height']} cm / {st.session_state['weight']} kg'}")
-            st.write(f"**IMC:** {'-' if st.session_state['missing_bmi'] else f'{bmi} kg/m²'}")
+            if st.session_state["missing_bmi"]:
+                altura_peso_txt = "-"
+                imc_txt = "-"
+            else:
+                altura_peso_txt = f"{st.session_state['height']} cm / {st.session_state['weight']} kg"
+                imc_txt = f"{bmi} kg/m²"
+            st.write(f"**Altura/Peso:** {altura_peso_txt}")
+            st.write(f"**IMC:** {imc_txt}")
             st.write(f"**ECOG:** {'ausente' if st.session_state['missing_ecog'] else st.session_state.get('ecog', 0)}")
+
+        # colC
         with colC:
             st.write(f"**Status:** {st.session_state['status_display']}")
             st.write(f"**Prioridade:** {status_priority}")
