@@ -1,3 +1,8 @@
+# ==============================================================
+# Set up
+# ==============================================================
+import os
+from pathlib import Path
 import streamlit as st
 import pandas as pd
 import os
@@ -7,16 +12,100 @@ import gdown
 import plotly.graph_objects as go
 from h2o.estimators import H2OGenericEstimator
 
+# --------------------------------------------------------------
+# Configuração da página
+# --------------------------------------------------------------
 st.set_page_config(
-        page_title="📈 Predição de Sobrevida",
+    page_title="📈 Predição de Sobrevida",
+    page_icon="📈",
+    layout="wide",
 )
 
-# Título do formulário
+# --------------------------------------------------------------
+# Utilitário: localizar primeiro arquivo existente (logo/foto)
+# --------------------------------------------------------------
+ASSETS = Path("assets")
+
+def first_existing(*names, base=ASSETS):
+    for n in names:
+        p = base / n if base else Path(n)
+        if p.exists():
+            return p
+    return None
+
+LOGO = first_existing("logo.png", "logo.jpg", "logo.jpeg", "logo.webp")
+
+# --------------------------------------------------------------
+# Cabeçalho
+# --------------------------------------------------------------
+st.markdown(
+    """
+    <div style='background: linear-gradient(to right, #004e92, #000428); 
+                padding: 36px; border-radius: 14px; margin-bottom:28px'>
+        <h1 style='color: white; margin: 0;'>📊 Predição de Sobrevida na Urgência-Emergência</h1>
+        <p style='color: #e8eef7; margin: 8px 0 0 0; font-size: 1.05rem;'>
+            Explore a predição para tomada de decisão no point of care.
+        </p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+# Esconde a lista padrão de páginas no topo da sidebar
+st.markdown(
+    """
+    <style>
+      [data-testid="stSidebarNav"] { display: none; }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# --------------------------------------------------------------
+# Sidebar 
+# --------------------------------------------------------------
+
+with st.sidebar:
+    if LOGO:
+        st.image(str(LOGO), use_container_width=True)
+    else:
+        st.warning("Logo não encontrada em assets/.")
+    st.markdown("<hr style='border:none;border-top:1px solid #ccc;'/>", unsafe_allow_html=True)
+    st.header("Menu")
+
+    # Se estiver em app multipágina, esses page_links funcionam nativamente.
+    with st.expander("Predição no PoC", expanded=True):
+        # Link para a própria página (opcional em multipage)
+        st.page_link("app.py", label="Predição de Sobrevida", icon="📈")
+
+    # Se estiver em app multipágina, esses page_links funcionam nativamente.
+    with st.expander("Explicação do Modelo", expanded=True):
+        # Link para a própria página (opcional em multipage)
+        st.page_link("explain.py", label="Explicação do Modelo", icon="📙")
+
+    st.markdown("<hr style='border:none;border-top:1px solid #ccc;'/>", unsafe_allow_html=True)
+
+    st.subheader("Conecte-se")
+    st.markdown(
+        """
+        - 💼 [LinkedIn](https://www.linkedin.com/in/gregorio-healthdata/)
+        - ▶️ [YouTube](https://www.youtube.com/@Patients2Python)
+        - 📸 [Instagram](https://www.instagram.com/patients2python/)
+        - 🌐 [Site](https://patients2python.com.br/)
+        - 🐙 [GitHub](https://github.com/gregrodrigues22)
+        - 👥💬 [Comunidade](https://chat.whatsapp.com/CBn0GBRQie5B8aKppPigdd)
+        - 🤝💬 [WhatsApp](https://patients2python.sprinthub.site/r/whatsapp-olz)
+        - 🎓 [Escola](https://app.patients2python.com.br/browse)
+        """,
+        unsafe_allow_html=True
+        )
+
+# --------------------------------------------------------------
+# CONTEÚDO PRINCIPAL DO APP (SEU CÓDIGO)
+# --------------------------------------------------------------
+
 st.title("Predição de Sobrevida na Emergência para Pacientes Oncológicos 📈🎯")
-
-st.write(
-    "Preencha os campos abaixo com os valores correspondentes às variáveis utilizadas no modelo preditivo."
-)
+st.write("Preencha os campos abaixo com os valores correspondentes às variáveis utilizadas no modelo preditivo.")
 
 #Criando listas
 cid = pd.read_csv("cids.csv")

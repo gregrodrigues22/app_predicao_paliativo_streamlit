@@ -1,0 +1,4 @@
+# Ignorar arquivos binários no build da imagem Docker
+*.zip
+*.joblib
+*.csv
