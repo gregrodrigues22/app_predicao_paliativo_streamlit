@@ -101,26 +101,36 @@ with st.sidebar:
         )
 
 # --------------------------------------------------------------
-# CONTEÚDO PRINCIPAL DO APP (AJUSTADO + MODELO EM CACHE)
+# CONTEÚDO PRINCIPAL DO APP 
 # --------------------------------------------------------------
 
 st.title("Predição no PoC 📈🎯")
 st.write("Preencha os campos abaixo com os valores correspondentes às variáveis utilizadas no modelo preditivo.")
 
-# ---------- carregadores em cache ----------
+# ---------- caches utilitários ----------
 @st.cache_data(show_spinner=False)
-def load_cids():
+def load_cids_filtered_for_c():
     df = pd.read_csv("cids.csv")
     cols_lower = {c.lower(): c for c in df.columns}
-    codigo_col = cols_lower.get("codigo")
+    codigo_col = cols_lower.get("codigo") or "Codigo"
     desc_col   = cols_lower.get("descricao")
-    if codigo_col and desc_col:
-        options = (df[codigo_col].astype(str) + " - " + df[desc_col].astype(str)).tolist()
-    elif codigo_col:
-        options = df[codigo_col].astype(str).tolist()
+
+    # filtra apenas códigos que começam com "C"
+    if codigo_col in df.columns:
+        df[codigo_col] = df[codigo_col].astype(str)
+        df_c = df[df[codigo_col].str.upper().str.startswith("C")].copy()
     else:
-        options = df.get("Codigo", pd.Series(dtype=str)).astype(str).tolist()
-    return df, options
+        df_c = pd.DataFrame(columns=[codigo_col])
+
+    if not df_c.empty:
+        if desc_col and desc_col in df_c.columns:
+            options = (df_c[codigo_col] + " - " + df_c[desc_col].astype(str)).tolist()
+        else:
+            options = df_c[codigo_col].tolist()
+        options = ["sem_cid - Não se aplica"] + options
+    else:
+        options = ["sem_cid - Não se aplica"]
+    return options
 
 @st.cache_data(show_spinner=False)
 def load_encoding_maps():
@@ -130,31 +140,22 @@ def load_encoding_maps():
 def load_scaler():
     return joblib.load("scaler.joblib")
 
-# ---------- MODELO H2O EM CACHE ----------
+# ---------- modelo H2O em cache ----------
 @st.cache_resource(show_spinner=True)
 def get_model():
-    """
-    Baixa o MOJO (se necessário), inicializa o H2O e carrega o modelo.
-    Executa apenas uma vez por sessão graças ao cache_resource.
-    """
     file_id = "1IEGIuHt1l8xwR_Jl5J_fuKf0h5Fkdwx2"  # ajuste se mudar
     url = f"https://drive.google.com/uc?id={file_id}"
     model_filename = "modelo_em_mojo.zip"
-
-    # Baixa apenas se não existir localmente
     if not os.path.exists(model_filename):
         gdown.download(url, model_filename, quiet=True)
-
-    # Inicia H2O (chamado uma vez por sessão)
     h2o.init()
-
-    # Importa o MOJO
     model = h2o.import_mojo(model_filename)
     return model
 
-cid_df, cid_options = load_cids()
+cid_options_c_only = load_cids_filtered_for_c()
 
-status_options = [
+# lista original (para encoding) — manter como estava
+status_options_full = [
     "Nenhuma das anteriores(Verde)",
     "Outras situações que requerem atend. com urgência intermediária - (Amarelo)",
     "Suspeita/Confirmação de NF - (Amarelo)",
@@ -177,27 +178,43 @@ status_options = [
 ]
 tendency_options = ["Estável", "Instável", "Melhorando"]
 
-# ---------- FORMULÁRIO (reordenado + componentes pedidos) ----------
+# opções "estéticas" para o select de Status (somente antes do hífen)
+def status_display(s: str) -> str:
+    return s.split(" - ")[0]  # mantém exatamente o que pediu
+
+status_display_options = [status_display(s) for s in status_options_full]
+# mapeia de volta para o valor completo usado no encoding
+status_display_to_full = {status_display(s): s for s in status_options_full}
+
+# ---------- FORMULÁRIO (com seções) ----------
 with st.form(key="input_form"):
 
-    # 1) Idade (slider)
+    # =========================
+    # 1) Dados de nascimento
+    # =========================
+    st.subheader("Dados de nascimento")
     age = st.slider("Idade (anos)", min_value=0, max_value=120, value=60, step=1)
-
-    # 2) Sexo (radio)
     gender = st.radio("Sexo", options=["Masculino", "Feminino"], horizontal=True)
 
-    # 3) Pressão Arterial Média (slider)
-    mbp = st.slider("Pressão Arterial Média (mmHg)", min_value=40, max_value=140, value=90, step=1)
+    st.markdown("---")
 
-    # 4) Frequência Cardíaca (slider)
+    # =========================
+    # 2) Dados vitais
+    # =========================
+    st.subheader("Dados vitais")
+    sbp = st.slider("Pressão Arterial Sistólica (mmHg)", min_value=70, max_value=240, value=120, step=1)
+    dbp = st.slider("Pressão Arterial Diastólica (mmHg)", min_value=40, max_value=140, value=80, step=1)
+    mbp = round(dbp + (sbp - dbp) / 3.0, 1)  # PAM
+    st.caption(f"PAM calculada automaticamente: **{mbp} mmHg**")
+
     hr = st.slider("Frequência Cardíaca (bpm)", min_value=30, max_value=200, value=90, step=1)
-
-    # 5) Saturação de Oxigênio (slider)
     saot = st.slider("Saturação de Oxigênio (%)", min_value=50, max_value=100, value=97, step=1)
 
     st.markdown("---")
 
-    # 6) Antropometria (condicional)
+    # =========================
+    # 3) Antropometria
+    # =========================
     st.subheader("Antropometria")
     missing_bmi = st.checkbox("Ausência de Antropometria")
     if not missing_bmi:
@@ -210,12 +227,18 @@ with st.form(key="input_form"):
 
     st.markdown("---")
 
-    # 7) Status Original (select)
-    status_original = st.selectbox("Status Original (classificação clínica)", options=status_options)
+    # =========================
+    # 4) Classificação de risco
+    # =========================
+    st.subheader("Classificação de risco")
 
-    # 8) Prioridade (cor → valor)
+    # STATUS: mostrar só texto antes do hífen, mas por trás usar o valor completo original
+    status_display_selected = st.selectbox("Status", options=status_display_options)
+    status_original = status_display_to_full[status_display_selected]  # <- valor "full" para o pipeline
+
     prioridade_color = st.radio(
-        "Prioridade (cor)", options=["🟢 Verde", "🟡 Amarelo", "🔴 Vermelho"],
+        "Prioridade",
+        options=["🟢 Verde", "🟡 Amarelo", "🔴 Vermelho"],
         index=1, horizontal=True
     )
     priority_map_display_to_value = {
@@ -225,13 +248,25 @@ with st.form(key="input_form"):
     }
     status_priority = priority_map_display_to_value[prioridade_color]
 
-    # 9) Tendência (radio)
     tendency = st.radio("Tendência clínica", options=tendency_options, horizontal=True)
 
-    # 10) CID (melhor nomenclatura)
-    icd = st.selectbox("CID-10 (Código – Descrição)", options=cid_options)
+    st.markdown("---")
 
-    # 11) ECOG (condicional; radio 0–4)
+    # =========================
+    # 5) Doença neoplásica diagnosticada
+    # =========================
+    st.subheader("Doença neoplásica diagnosticada")
+    icd = st.selectbox(
+        "CID-10 (apenas neoplasias – códigos iniciados por 'C')",
+        options=cid_options_c_only,
+        index=0
+    )
+
+    st.markdown("---")
+
+    # =========================
+    # 6) ECOG (deixar condicional)
+    # =========================
     st.subheader("Escore Funcional (ECOG)")
     missing_ecog = st.checkbox("Ausência de ECOG")
     if not missing_ecog:
@@ -239,52 +274,56 @@ with st.form(key="input_form"):
     else:
         ecog = 0.0
 
-    # 12) Tempo entre última consulta e PS (slider dias)
-    ti = st.slider("Tempo entre Última Consulta e PS (dias)", min_value=0, max_value=365, value=7, step=1)
+    st.markdown("---")
 
-    # 13) Internação Recente (radio)
+    # =========================
+    # 7) Histórico da doença
+    # =========================
+    st.subheader("Histórico da doença")
     tdr = st.radio("Internação Recente", options=["Não", "Sim"], horizontal=True)
+    ti = st.slider("Tempo entre Última Consulta e PS (dias)", min_value=0, max_value=365, value=7, step=1)
 
     st.markdown("---")
     submit_button = st.form_submit_button(label="Enviar")
 
-# ---------- Exibição e DF de entrada ----------
+# ---------- Exibição resumida ----------
 if submit_button:
     st.success("Dados enviados com sucesso!")
     st.write({
         "Idade": age,
         "Sexo": gender,
-        "Pressão Arterial (MBP)": mbp,
-        "Frequência Cardíaca (HR)": hr,
+        "PAS/PAD/PAM (mmHg)": f"{sbp}/{dbp}/{mbp}",
+        "Frequência Cardíaca (bpm)": hr,
         "Saturação de Oxigênio (%)": saot,
         "Ausência de Antropometria": missing_bmi,
         "Altura (cm)": height,
         "Peso (kg)": weight,
         "IMC (auto)": bmi,
-        "Status Original": status_original,
+        "Status (exibição)": status_display_selected,
+        "Status (interno p/ modelo)": status_original,
         "Prioridade (cor)": status_priority,
-        "Tendência": tendency,
+        "Tendência clínica": tendency,
         "CID-10": icd,
         "Ausência de ECOG": missing_ecog,
         "ECOG": ecog if not missing_ecog else None,
-        "Tempo entre Última Consulta e PS (dias)": ti,
         "Internação Recente": tdr,
+        "Tempo entre Última Consulta e PS (dias)": ti,
     })
 
+# ---------- DataFrame de entrada (mesmos nomes do pipeline) ----------
 if submit_button:
-    # ⚠️ icd precisa ser lista [icd], não string isolada
     df_input = pd.DataFrame({
         "age": [age],
         "gender": [gender],
-        "mbp": [float(mbp)],
+        "mbp": [float(mbp)],          # PAM calculada
         "hr": [float(hr)],
         "saot": [float(saot)],
         "height": [float(height)],
         "weight": [float(weight)],
         "bmi": [float(bmi)],
-        "icd": [icd],
-        "status_original": [status_original],
-        "status_priority": [status_priority],
+        "icd": [icd],                 # "Cxx - desc" ou "sem_cid - Não se aplica"
+        "status_original": [status_original],   # <- valor completo
+        "status_priority": [status_priority],   # Verde/Amarelo/Vermelho
         "ti": [float(ti)],
         "tdr": [tdr],
         "tendency": [tendency],
@@ -293,12 +332,14 @@ if submit_button:
         "missing_bmi": [bool(missing_bmi)]
     })
 
+# ---------- ENCODINGS ----------
 if submit_button:
-    # ---------- ENCODING ----------
     try:
         encoding_maps = load_encoding_maps()
         encoding_maps_cid = encoding_maps["ICD"]
         df_input["icd_processed"] = df_input["icd"].astype(str).str.split(" - ").str[0].str.lower()
+        # se não começar com "c", trata como sem_cid
+        df_input.loc[~df_input["icd_processed"].str.startswith("c"), "icd_processed"] = "sem_cid"
         df_input["icd_encoded"] = df_input["icd_processed"].map(encoding_maps_cid).fillna(0.34162670016104163)
     except Exception as e:
         st.write("❌ Erro ao preparar Dado 'CID' para predição...", str(e))
@@ -351,7 +392,8 @@ if submit_button:
     except Exception as e:
         st.write("❌ Erro ao preparar Dado 'Tempo entre Última Consulta e PS' para predição...", str(e))
 
-    # ---------- SCALER ----------
+# ---------- SCALER ----------
+if submit_button:
     try:
         scaler = load_scaler()
     except Exception as e:
@@ -364,6 +406,7 @@ if submit_button:
             'age','status_priority_encoded','icd_encoded','status_original_encoded'
         ]
         df_input = df_input.filter(items=selected_columns)
+
         column_scale_mapping = {
             "bmi": "BMI_knn", "hr": "HR_knn", "mbp": "MBP_knn", "saot_fracao": "OS_knn",
             "weight": "Weight_knn", "height": "Height_knn", "ti_segundos": "TI_median",
@@ -385,11 +428,11 @@ if submit_button:
     except Exception as e:
         st.write("❌ Erro ao normalizar dados...", str(e))
 
-    # ---------- PREDIÇÃO COM MODELO EM CACHE ----------
+# ---------- PREDIÇÃO ----------
+if submit_button:
     try:
-        model = get_model()  # <- carrega do cache
-        st.session_state['model'] = model  # opcional
-        st.success("✅ Modelo carregado (cache).")
+        model = get_model()
+        st.session_state['model'] = model
 
         h2o_df = h2o.H2OFrame(df_input_scaled)
         predictions = model.predict(h2o_df)
@@ -439,12 +482,12 @@ if submit_button:
         shap_df_melted.columns = ["Feature", "Importance"]
 
         rename_dict = {
-            "BMI_knn": "IMC", "HR_knn": "Frequência Cardíaca", "MBP_knn": "Pressão Média",
-            "OS_knn": "Saturação de Oxigênio", "Weight_knn": "Peso", "Height_knn": "Altura",
-            "TI_median": "Tempo entre Consulta e PS", "ECOG_median": "ECOG",
-            "missing_bmi": "IMC ausente", "missing_ecog": "ECOG ausente",
-            "Gender_binary": "Sexo", "TDR_binary": "Internação Recente", "Tendency_ordinal": "Tendência",
-            "Age": "Idade", "Status_priority": "Prioridade Status", "ICD": "CID", "Status_Original": "Status Original"
+            "BMI_knn": "IMC","HR_knn": "Frequência Cardíaca","MBP_knn": "Pressão Média",
+            "OS_knn": "Saturação de Oxigênio","Weight_knn": "Peso","Height_knn": "Altura",
+            "TI_median": "Tempo entre Consulta e PS","ECOG_median": "ECOG",
+            "missing_bmi": "IMC ausente","missing_ecog": "ECOG ausente",
+            "Gender_binary": "Sexo","TDR_binary": "Internação Recente","Tendency_ordinal": "Tendência",
+            "Age": "Idade","Status_priority": "Prioridade Status","ICD": "CID","Status_Original": "Status Original"
         }
         shap_df_melted["Feature"] = shap_df_melted["Feature"].replace(rename_dict)
         shap_df_melted = shap_df_melted.reindex(shap_df_melted["Importance"].abs().sort_values(ascending=True).index)
