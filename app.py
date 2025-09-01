@@ -210,10 +210,12 @@ st.markdown("---")
 # 3) Antropometria
 st.subheader("Antropometria")
 missing_bmi = st.checkbox("Ausência de Antropometria", key="missing_bmi")
+
 if not missing_bmi:
     height = st.slider("Altura (cm)", min_value=120, max_value=220, value=170, step=1, key="height")
     weight = st.slider("Peso (kg)", min_value=30, max_value=200, value=70, step=1, key="weight")
-    bmi = round(st.session_state["weight"] / ((st.session_state["height"] / 100) ** 2), 1)
+    bmi = round(weight / ((height / 100) ** 2), 1)
+
     st.caption(f"IMC calculado automaticamente: **{bmi} kg/m²**")
 else:
     height, weight, bmi = 0.0, 0.0, 0.0
