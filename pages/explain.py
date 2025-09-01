@@ -58,7 +58,7 @@ with st.sidebar:
     st.markdown("<hr style='border:none;border-top:1px solid #ccc;'/>", unsafe_allow_html=True)
     st.header("Menu")
     st.page_link("app.py",       label="Predição no PoC", icon="📈")
-    st.page_link("explain.py",   label="Explicação do Modelo", icon="🧠")
+    st.page_link("pages/explain.py",   label="Explicação do Modelo", icon="🧠")
 
     st.markdown("<hr style='border:none;border-top:1px solid #ccc;'/>", unsafe_allow_html=True)
     st.subheader("Conecte-se")
